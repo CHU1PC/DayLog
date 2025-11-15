@@ -1,28 +1,34 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { type NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
-  const requestUrl = new URL(request.url)
-  const code = requestUrl.searchParams.get('code')
-
-  // 環境変数から正しいベースURLを取得
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || requestUrl.origin
-
-  console.log('🔍 Callback - requestUrl.origin:', requestUrl.origin)
-  console.log('🔍 Callback - NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL)
-  console.log('🔍 Callback - Using baseUrl:', baseUrl)
+  const { searchParams, origin } = new URL(request.url)
+  const code = searchParams.get('code')
+  const next = searchParams.get('next') ?? '/'
 
   if (code) {
-    const supabase = await createServerSupabaseClient()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            // Cookie setting is handled by proxy/middleware
+            // This is intentionally left empty per Supabase SSR docs
+          },
+        },
+      }
+    )
 
-    // Exchange the code for a session
     const { error, data } = await supabase.auth.exchangeCodeForSession(code)
 
     if (error) {
       console.error('❌ Error exchanging code for session:', error)
-      // エラーの場合はログインページにリダイレクト
-      return NextResponse.redirect(`${baseUrl}/login?error=認証に失敗しました`)
+      return NextResponse.redirect(`${origin}/login?error=認証に失敗しました`)
     }
 
     // 承認状態を確認
@@ -34,19 +40,17 @@ export async function GET(request: NextRequest) {
         .maybeSingle()
 
       if (approvalData && approvalData.approved) {
-        console.log('✅ User is approved, redirecting to:', `${baseUrl}/`)
-        return NextResponse.redirect(`${baseUrl}/`)
+        console.log('✅ User is approved, redirecting to:', `${origin}/`)
+        return NextResponse.redirect(`${origin}${next}`)
       } else {
         console.log('⏳ User is not approved yet, redirecting to pending-approval')
-        return NextResponse.redirect(`${baseUrl}/pending-approval`)
+        return NextResponse.redirect(`${origin}/pending-approval`)
       }
     }
 
-    console.log('✅ Code exchange successful, redirecting to:', `${baseUrl}/`)
-    return NextResponse.redirect(`${baseUrl}/`)
+    return NextResponse.redirect(`${origin}${next}`)
   }
 
-  console.log('⚠️ No code provided, redirecting to login')
   // codeがない場合はログインページにリダイレクト
-  return NextResponse.redirect(`${baseUrl}/login`)
+  return NextResponse.redirect(`${origin}/login`)
 }
