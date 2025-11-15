@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -28,9 +27,10 @@ export async function middleware(request: NextRequest) {
         },
       },
     }
-  ) as SupabaseClient
+  )
 
   // Refresh the Auth token
+  // @ts-ignore - Type issue with @supabase/ssr 0.7.0
   const { data: { user } } = await supabase.auth.getUser()
 
   // 認証が不要なパス
