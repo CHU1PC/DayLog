@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase"
 import type { User, Session } from "@supabase/supabase-js"
 
@@ -33,7 +33,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
 
-  const supabase = createClient()
+  // Supabaseクライアントをメモ化（再レンダリング時に再作成されないようにする）
+  const supabase = useMemo(() => createClient(), [])
 
   // 管理者かどうかを判定
   const isAdmin = role === 'admin'
@@ -70,16 +71,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("👤 Using user:", currentUserEmail, "ID:", currentUserId)
       console.log("📊 Querying user_approvals table for user_id:", currentUserId)
 
-      const { data, error } = await supabase
+      // タイムアウト付きでクエリを実行（10秒）
+      const queryStartTime = Date.now()
+      const queryPromise = supabase
         .from("user_approvals")
         .select("approved, role, name")
         .eq("user_id", currentUserId)
         .maybeSingle()
 
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          console.error("⏱️ Query timeout - took longer than 10 seconds")
+          reject(new Error('Query timeout after 10 seconds'))
+        }, 10000)
+      })
+
+      const result = await Promise.race([queryPromise, timeoutPromise]) as any
+      const queryDuration = Date.now() - queryStartTime
+      console.log(`⏱️ Query completed in ${queryDuration}ms`)
+
+      const { data, error } = result
+
       console.log("📊 Query result - data:", data, "error:", error)
 
       if (error) {
         console.error("❌ Error checking approval status:", error)
+        console.error("❌ Error details:", JSON.stringify(error, null, 2))
         setIsApproved(false)
         setRole(null)
         setUserName(null)
