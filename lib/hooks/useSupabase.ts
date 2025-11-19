@@ -40,8 +40,8 @@ export function useSupabase() {
 
     // Supabase モード
     try {
-      console.log('[fetchTasks] Current user ID:', user?.id)
-      console.log('[fetchTasks] Current user email:', user?.email)
+      logger.log('[fetchTasks] Current user ID:', user?.id)
+      logger.log('[fetchTasks] Current user email:', user?.email)
 
       // ユーザーの所属TeamのLinear Team IDを取得
       const { data: memberships, error: membershipsError } = await supabase
@@ -53,17 +53,17 @@ export function useSupabase() {
         `)
         .eq('user_id', user?.id)
 
-      console.log('[fetchTasks] Memberships data:', JSON.stringify(memberships, null, 2))
+      logger.log('[fetchTasks] Memberships data:', JSON.stringify(memberships, null, 2))
 
       if (membershipsError) {
-        console.error('Failed to fetch team memberships:', membershipsError)
+        logger.error('Failed to fetch team memberships:', membershipsError)
       }
 
       const userTeamIds = (memberships || [])
         .map((m: any) => m.team?.linear_team_id)
         .filter((id: string | null) => id !== null)
 
-      console.log('User team IDs for task filtering:', userTeamIds)
+      logger.log('User team IDs for task filtering:', userTeamIds)
 
       // タスクを取得
       const { data, error } = await supabase
@@ -80,17 +80,21 @@ export function useSupabase() {
         : (data || []).filter((task) => {
             // 1. グローバルタスク（全員が見える）
             if (task.assignee_email === 'TaskForAll@task.com') {
+              logger.log('[useSupabase] ✅ Including global task:', task.name, 'assignee_email:', task.assignee_email)
               return true
             }
             // 2. 自分にアサインされているタスク
             if (task.assignee_email === user?.email) {
+              logger.log('[useSupabase] ✅ Including user task:', task.name, 'assignee_email:', task.assignee_email)
               return true
             }
             // 3. それ以外（nullや他人のタスク）は非表示
+            logger.log('[useSupabase] ❌ Excluding task:', task.name, 'assignee_email:', task.assignee_email, 'user email:', user?.email)
             return false
           })
 
-      console.log(`Filtered ${filteredData.length} tasks from ${data?.length || 0} total tasks (user email: ${user?.email}, isAdmin: ${isAdmin})`)
+      logger.log(`[useSupabase] Filtered ${filteredData.length} tasks from ${data?.length || 0} total tasks (user email: ${user?.email}, isAdmin: ${isAdmin})`)
+      logger.log('[useSupabase] Filtered task names:', filteredData.map(t => `${t.name} (${t.assignee_email})`).join(', '))
 
       const mappedTasks: Task[] = filteredData.map((task) => ({
         id: task.id,
