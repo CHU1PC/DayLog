@@ -9,6 +9,7 @@ import type { Task, TimeEntry } from "@/lib/types"
 import { Play, Square, Clock } from "lucide-react"
 import { generateId } from "@/lib/utils"
 import { useAuth } from "@/lib/contexts/AuthContext"
+import { logger } from "@/lib/logger"
 
 // タイムゾーン定義
 const TIMEZONES = {
@@ -71,25 +72,36 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
     localStorage.setItem('taskTimerTimezone', newTimezone)
   }
 
-  // タスクをフィルタリング: completed/canceledを除外し、assignee_emailが一致するもののみ表示
+  // タスクをフィルタリング: completed/canceledを除外し、assignee_emailが一致するもの + グローバルタスクのみ表示
   const availableTasks = tasks.filter((task) => {
     // linear_state_typeがcompleted, canceledの場合は除外
     if (task.linear_state_type === 'completed' || task.linear_state_type === 'canceled') {
+      logger.log('[TaskTimer] Excluding completed/canceled task:', task.name)
       return false
     }
 
-    // assignee_emailが設定されており、かつユーザーのemailと一致する場合のみ表示
-    const matches = !!task.assignee_email && task.assignee_email === user?.email
-    if (!matches) {
-      console.log('[TaskTimer] Filtering out task:', {
-        taskName: task.name,
-        taskAssigneeEmail: task.assignee_email,
-        currentUserEmail: user?.email,
-        matches
-      })
+    // 1. グローバルタスク（全員が見える）
+    if (task.assignee_email === 'TaskForAll@task.com') {
+      logger.log('[TaskTimer] ✅ Including global task:', task.name)
+      return true
     }
-    return matches
+
+    // 2. 自分にアサインされているタスク
+    if (task.assignee_email === user?.email) {
+      logger.log('[TaskTimer] ✅ Including user task:', task.name)
+      return true
+    }
+
+    // 3. それ以外は非表示
+    logger.log('[TaskTimer] ❌ Filtering out task:', {
+      taskName: task.name,
+      taskAssigneeEmail: task.assignee_email,
+      currentUserEmail: user?.email,
+    })
+    return false
   })
+
+  logger.log('[TaskTimer] Total available tasks:', availableTasks.length, availableTasks.map(t => t.name))
 
   // タスクをTeamごとにグループ化してソート
   const groupedAvailableTasks = availableTasks.reduce((groups, task) => {
