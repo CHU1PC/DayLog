@@ -455,7 +455,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
           <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-3">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
               <div className="flex items-center gap-2 sm:gap-4">
-                <h1 className="text-base sm:text-xl font-bold text-foreground">日報月報管理システム</h1>
+                <h1 className="text-base sm:text-xl font-bold text-foreground">DayLog</h1>
                 <Select value={timezone} onValueChange={(value) => handleTimezoneChange(value as TimezoneKey)}>
                   <SelectTrigger className="w-[180px] h-8 text-xs">
                     <SelectValue />
@@ -556,7 +556,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-20">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
-            <h1 className="text-xl font-bold text-foreground">日報月報管理システム</h1>
+            <h1 className="text-xl font-bold text-foreground">DayLog</h1>
 
             <div className="flex items-center gap-4 flex-1 max-w-3xl">
               <Select value={selectedTaskId} onValueChange={setSelectedTaskId} disabled={isRunning}>

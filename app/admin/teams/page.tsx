@@ -7,21 +7,48 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { MembersManager } from '@/components/members-manager'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import {
   Loader2, AlertCircle, Users,
-  ArrowLeft, UserPlus, RefreshCw
+  ArrowLeft, RefreshCw, ExternalLink
 } from 'lucide-react'
+
+interface LinearIssue {
+  id: string
+  name: string
+  linear_issue_id: string
+  linear_identifier: string
+  linear_state_type: string
+  priority: number
+  assignee_email?: string
+  assignee_name?: string
+  linear_url?: string
+  description?: string
+}
 
 interface TeamMember {
   user_id: string
   email: string
   name?: string
   role: string
-  approved?: boolean
+  issues: LinearIssue[]
+  priorityScore: number
 }
 
-interface TeamWithMembers {
+interface TeamWithIssues {
   id: string
   linear_team_id: string
   name: string
@@ -31,19 +58,46 @@ interface TeamWithMembers {
   color?: string
   url: string
   members: TeamMember[]
-  memberCount: number
-  projectCount: number
+  issues: LinearIssue[]
+}
+
+const PRIORITY_LABELS: Record<number, string> = {
+  0: 'なし',
+  1: '緊急',
+  2: '高',
+  3: '中',
+  4: '低',
+}
+
+const PRIORITY_COLORS: Record<number, string> = {
+  0: 'bg-gray-100 text-gray-800',
+  1: 'bg-red-100 text-red-800',
+  2: 'bg-orange-100 text-orange-800',
+  3: 'bg-yellow-100 text-yellow-800',
+  4: 'bg-blue-100 text-blue-800',
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  'unstarted': '未着手',
+  'started': '進行中',
+  'completed': '完了',
+  'canceled': 'キャンセル',
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  'unstarted': 'bg-gray-100 text-gray-800',
+  'started': 'bg-blue-100 text-blue-800',
+  'completed': 'bg-green-100 text-green-800',
+  'canceled': 'bg-gray-100 text-gray-600',
 }
 
 export default function TeamsPage() {
   const { user, loading: authLoading, isAdmin } = useAuth()
   const router = useRouter()
-  const [teams, setTeams] = useState<TeamWithMembers[]>([])
+  const [teams, setTeams] = useState<TeamWithIssues[]>([])
   const [teamsLoading, setTeamsLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedTeam, setSelectedTeam] = useState<TeamWithMembers | null>(null)
-  const [showTeamMembersDialog, setShowTeamMembersDialog] = useState(false)
 
   useEffect(() => {
     if (!authLoading) {
@@ -58,12 +112,12 @@ export default function TeamsPage() {
   }, [user, authLoading, isAdmin, router])
 
   const fetchTeams = async () => {
-    console.log('Fetching teams...')
+    console.log('Fetching teams with issues...')
     setTeamsLoading(true)
     setError(null)
 
     try {
-      const res = await fetch('/api/admin/teams/members')
+      const res = await fetch('/api/admin/teams/issues')
       if (!res.ok) {
         throw new Error('Team一覧の取得に失敗しました')
       }
@@ -104,11 +158,6 @@ export default function TeamsPage() {
     }
   }
 
-  const handleManageTeamMembers = (team: TeamWithMembers) => {
-    setSelectedTeam(team)
-    setShowTeamMembersDialog(true)
-  }
-
   const getMemberName = (member: TeamMember) => member.name || member.email
 
   if (authLoading || teamsLoading) {
@@ -133,7 +182,7 @@ export default function TeamsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2">Team管理</h1>
-            <p className="text-muted-foreground">LinearのTeamとメンバーを管理</p>
+            <p className="text-muted-foreground">TeamごとのLinear Issueとメンバーを管理</p>
           </div>
           <Button variant="outline" onClick={() => router.push('/')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -152,7 +201,7 @@ export default function TeamsPage() {
         {/* 同期ボタン */}
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            LinearからTeam情報を同期してメンバーを管理できます
+            LinearからTeam情報とIssueを同期できます
           </div>
           <Button
             onClick={handleSyncTeams}
@@ -182,100 +231,153 @@ export default function TeamsPage() {
               </CardContent>
             </Card>
           ) : (
-            teams.map((team) => (
-              <Card key={team.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg">
-                          {team.name}
-                        </CardTitle>
-                        <Badge variant="outline" className="font-mono">
-                          {team.key}
-                        </Badge>
-                        {team.color && (
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: team.color }}
-                          />
-                        )}
-                      </div>
-                      {team.description && (
-                        <CardDescription>{team.description}</CardDescription>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">
-                        <Users className="w-3 h-3 mr-1" />
-                        {team.memberCount}名
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium">メンバー一覧:</div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleManageTeamMembers(team)}
-                      >
-                        <UserPlus className="w-4 h-4 mr-2" />
-                        メンバー編集
-                      </Button>
-                    </div>
-
-                    {team.members.length === 0 ? (
-                      <div className="text-sm text-muted-foreground py-4 text-center border-2 border-dashed rounded-lg">
-                        メンバーが登録されていません
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {team.members.map((member) => (
-                          <div
-                            key={member.user_id}
-                            className="flex items-center gap-2 p-2 border rounded-lg"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium truncate">
-                                {getMemberName(member)}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate">
-                                {member.email}
-                              </div>
+            <Accordion type="multiple" className="space-y-4">
+              {teams.map((team) => (
+                <AccordionItem
+                  key={team.id}
+                  value={team.id}
+                  className="border rounded-lg px-0"
+                >
+                  <Card className="border-0">
+                    <AccordionTrigger className="hover:no-underline px-6 py-0">
+                      <CardHeader className="w-full">
+                        <div className="flex items-center justify-between w-full">
+                          <div className="space-y-1 flex-1 text-left">
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="text-lg">
+                                {team.name}
+                              </CardTitle>
+                              <Badge variant="outline" className="font-mono">
+                                {team.key}
+                              </Badge>
+                              {team.color && (
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: team.color }}
+                                />
+                              )}
                             </div>
-                            <Badge
-                              variant={member.role === 'admin' ? 'default' : 'secondary'}
-                              className="flex-shrink-0"
-                            >
-                              {member.role === 'admin' ? '管理者' : 'ユーザー'}
+                            {team.description && (
+                              <CardDescription>{team.description}</CardDescription>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">
+                              <Users className="w-3 h-3 mr-1" />
+                              {team.members.length}名
+                            </Badge>
+                            <Badge variant="outline">
+                              {team.issues.length}件のIssue
                             </Badge>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                        </div>
+                      </CardHeader>
+                    </AccordionTrigger>
+
+                    <AccordionContent>
+                      <CardContent className="pt-4">
+                        {team.members.length === 0 ? (
+                          <div className="text-sm text-muted-foreground py-8 text-center border-2 border-dashed rounded-lg">
+                            このTeamにアサインされているIssueを持つメンバーがいません
+                          </div>
+                        ) : (
+                          <div className="space-y-6">
+                            {team.members.map((member) => (
+                              <div key={member.user_id} className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div>
+                                      <div className="font-medium">
+                                        {getMemberName(member)}
+                                      </div>
+                                      <div className="text-sm text-muted-foreground">
+                                        {member.email}
+                                      </div>
+                                    </div>
+                                    <Badge
+                                      variant={member.role === 'admin' ? 'default' : 'secondary'}
+                                    >
+                                      {member.role === 'admin' ? '管理者' : 'ユーザー'}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    優先度スコア: {member.priorityScore}
+                                  </div>
+                                </div>
+
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="w-[120px]">Issue ID</TableHead>
+                                      <TableHead>タイトル</TableHead>
+                                      <TableHead className="w-[100px]">優先度</TableHead>
+                                      <TableHead className="w-[100px]">ステータス</TableHead>
+                                      <TableHead className="w-[50px]"></TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {member.issues.map((issue) => (
+                                      <TableRow key={issue.id}>
+                                        <TableCell className="font-mono text-sm">
+                                          {issue.linear_identifier}
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="max-w-md">
+                                            <div className="font-medium truncate">
+                                              {issue.name.replace(/^\[.*?\]\s*/, '')}
+                                            </div>
+                                            {issue.description && (
+                                              <div className="text-xs text-muted-foreground truncate mt-1">
+                                                {issue.description}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <Badge
+                                            className={PRIORITY_COLORS[issue.priority || 0]}
+                                            variant="outline"
+                                          >
+                                            {PRIORITY_LABELS[issue.priority || 0]}
+                                          </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                          <Badge
+                                            className={STATUS_COLORS[issue.linear_state_type] || STATUS_COLORS.unstarted}
+                                            variant="outline"
+                                          >
+                                            {STATUS_LABELS[issue.linear_state_type] || issue.linear_state_type}
+                                          </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                          {issue.linear_url && (
+                                            <a
+                                              href={issue.linear_url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-muted-foreground hover:text-foreground"
+                                            >
+                                              <ExternalLink className="w-4 h-4" />
+                                            </a>
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </AccordionContent>
+                  </Card>
+                </AccordionItem>
+              ))}
+            </Accordion>
           )}
         </div>
       </div>
-
-      {/* Teamのメンバー管理ダイアログ */}
-      {selectedTeam && (
-        <MembersManager
-          entityId={selectedTeam.id}
-          entityName={selectedTeam.name}
-          entityType="team"
-          currentMemberIds={selectedTeam.members.map(m => m.user_id)}
-          open={showTeamMembersDialog}
-          onOpenChange={setShowTeamMembersDialog}
-          onSuccess={fetchTeams}
-        />
-      )}
     </div>
   )
 }
