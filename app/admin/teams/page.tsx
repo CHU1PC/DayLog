@@ -309,9 +309,6 @@ export default function TeamsPage() {
                                       <Badge variant="outline">
                                         {member.issues.length}件のIssue
                                       </Badge>
-                                      <div className="text-sm text-muted-foreground">
-                                        優先度スコア: {member.priorityScore}
-                                      </div>
                                     </div>
                                   </div>
                                 </AccordionTrigger>
