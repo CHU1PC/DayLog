@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/table"
 import {
   Loader2, AlertCircle, Users,
-  ArrowLeft, RefreshCw, ExternalLink
+  ArrowLeft, ExternalLink
 } from 'lucide-react'
 
 interface LinearIssue {
@@ -96,7 +96,6 @@ export default function TeamsPage() {
   const router = useRouter()
   const [teams, setTeams] = useState<TeamWithIssues[]>([])
   const [teamsLoading, setTeamsLoading] = useState(true)
-  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -129,32 +128,6 @@ export default function TeamsPage() {
       setError(err instanceof Error ? err.message : '不明なエラーが発生しました')
     } finally {
       setTeamsLoading(false)
-    }
-  }
-
-  const handleSyncTeams = async () => {
-    setSyncing(true)
-    setError(null)
-
-    try {
-      console.log('Syncing teams from Linear...')
-      const res = await fetch('/api/admin/teams/sync', {
-        method: 'POST',
-      })
-
-      const data = await res.json()
-      console.log('Sync response:', { status: res.status, data })
-
-      if (!res.ok) {
-        throw new Error(data.details || data.error || 'Team同期に失敗しました')
-      }
-
-      await fetchTeams()
-    } catch (err) {
-      console.error('Sync error:', err)
-      setError(err instanceof Error ? err.message : 'Team同期に失敗しました')
-    } finally {
-      setSyncing(false)
     }
   }
 
@@ -198,29 +171,6 @@ export default function TeamsPage() {
           </Alert>
         )}
 
-        {/* 同期ボタン */}
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            LinearからTeam情報とIssueを同期できます
-          </div>
-          <Button
-            onClick={handleSyncTeams}
-            disabled={syncing}
-            variant="outline"
-          >
-            {syncing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                同期中...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Linearから同期
-              </>
-            )}
-          </Button>
-        </div>
 
         {/* Team一覧 */}
         <div className="space-y-4">

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -20,8 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  Loader2, AlertCircle, Users,
-  RefreshCw, ExternalLink
+  Loader2, AlertCircle, Users, ExternalLink
 } from 'lucide-react'
 
 interface LinearIssue {
@@ -92,7 +90,6 @@ const STATUS_COLORS: Record<string, string> = {
 export function TeamManagement() {
   const [teams, setTeams] = useState<TeamWithIssues[]>([])
   const [teamsLoading, setTeamsLoading] = useState(true)
-  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -120,32 +117,6 @@ export function TeamManagement() {
     }
   }
 
-  const handleSyncTeams = async () => {
-    setSyncing(true)
-    setError(null)
-
-    try {
-      console.log('Syncing teams from Linear...')
-      const res = await fetch('/api/admin/teams/sync', {
-        method: 'POST',
-      })
-
-      const data = await res.json()
-      console.log('Sync response:', { status: res.status, data })
-
-      if (!res.ok) {
-        throw new Error(data.details || data.error || 'Team同期に失敗しました')
-      }
-
-      await fetchTeams()
-    } catch (err) {
-      console.error('Sync error:', err)
-      setError(err instanceof Error ? err.message : 'Team同期に失敗しました')
-    } finally {
-      setSyncing(false)
-    }
-  }
-
   const getMemberName = (member: TeamMember) => member.name || member.email
 
   if (teamsLoading) {
@@ -169,29 +140,6 @@ export function TeamManagement() {
         </Alert>
       )}
 
-      {/* 同期ボタン */}
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
-          LinearからTeam情報とIssueを同期できます
-        </div>
-        <Button
-          onClick={handleSyncTeams}
-          disabled={syncing}
-          variant="outline"
-        >
-          {syncing ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              同期中...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Linearから同期
-            </>
-          )}
-        </Button>
-      </div>
 
       {/* Team一覧 */}
       <div className="space-y-4">
