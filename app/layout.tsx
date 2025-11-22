@@ -9,7 +9,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "日報月報管理システム",
+  title: "DayLog",
   description: "時間管理と日報・月報作成システム",
   generator: "Next.js",
   icons: {

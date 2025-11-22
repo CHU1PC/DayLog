@@ -1,382 +1,220 @@
-# 日報システム (Daily Report System)
+# DayLog
 
-Linear Issueと連携したタイムトラッキング・日報管理システム
+作業時間を記録し、日報を自動生成するチーム向けアプリケーション
 
-## 概要
+DayLogは、日々の作業時間を簡単に記録し、チーム全体の作業状況を可視化するWebアプリケーションです。Linear連携により、Issueの自動同期も可能で、エンジニアチームやビジネスチームの生産性向上をサポートします。
 
-Linear Issueをタスクとして同期し、作業時間を計測・記録できるシステムです。計測した時間は自動的にGoogle Sheetsに出力され、チームやプロジェクトごとの工数管理が可能です。
+---
 
 ## 主な機能
 
-- **タイムトラッキング**: タスクごとに作業時間を計測
-- **週次カレンダー**: 週単位で作業履歴を可視化
-- **Linear連携**: Linear IssueをタスクとしてインポートしてTracking
-- **Google Sheets連携**: 作業記録を自動的にスプレッドシートに出力
-- **チーム・プロジェクト管理**: メンバーをTeamやProjectに割り当て
-- **承認フロー**: 新規ユーザーは管理者による承認が必要
-- **タイムゾーン対応**: 複数のタイムゾーンに対応
+### 📊 作業時間の記録と管理
 
-## 技術スタック
+- ワンクリックタイマー: タスクを選択してスタートボタンを押すだけで、作業時間の記録を開始
+- 自動日報生成: 記録した作業時間から、自動的に日報を生成
+- Google Sheets連携: 作業記録を自動的にGoogle Sheetsに出力し、管理や集計が簡単
 
-- **フロントエンド**: Next.js 15 (App Router), React, TypeScript, TailwindCSS
-- **UI**: shadcn/ui
-- **バックエンド**: Next.js API Routes
-- **データベース**: Supabase (PostgreSQL)
-- **認証**: Supabase Auth
-- **外部連携**: Linear API, Google Sheets API
+### 📅 視覚的なカレンダービュー
 
-## セットアップ
+- 週間カレンダー: 1週間の作業時間を一目で確認
+- タスク別色分け: タスクごとに色分けされ、作業の内訳が分かりやすい
+- 日別・週別切り替え: 日ごと、週ごとの表示を自由に切り替え
 
-### 1. 前提条件
+### 🔗 Linear連携
 
-- Node.js 18以上
-- pnpm (推奨) または npm
-- Supabaseアカウント
-- Linear APIキー
-- Google Cloud Platformアカウント (Sheets連携用、オプション)
+- Issue自動同期: LinearのIssueを自動的にタスクとして取り込み
+- リアルタイム更新: Webhook連携により、Issueの変更がリアルタイムで反映
+- チーム・プロジェクト管理: Linear上のチームやプロジェクト構造をそのまま利用
 
-### 2. リポジトリのクローン
+### 👥 チーム作業の可視化
 
-```bash
-git clone <repository-url>
-cd daily_report_system
-```
+- チーム別表示: チームごとの作業時間や進捗を確認
+- メンバー管理: 管理者による承認制で、セキュアなチーム運用
+- 作業時間の共有: チーム全体の作業状況を共有し、コラボレーションを促進
 
-### 3. 依存関係のインストール
-
-```bash
-pnpm install
-```
-
-### 4. 環境変数の設定
-
-`.env.local.example`をコピーして`.env.local`を作成:
-
-```bash
-cp .env.local.example .env.local
-```
-
-`.env.local`を編集して以下の環境変数を設定:
-
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
-
-# サイトのベースURL
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-
-# Linear API
-LINEAR_API_KEY=your-linear-api-key
-
-# Linear Webhook (オプション)
-LINEAR_WEBHOOK_SECRET=your-webhook-secret
-
-# Google Sheets (オプション)
-GOOGLE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
-GOOGLE_SPREADSHEET_ID=your-spreadsheet-id
-```
-
-### 5. Supabaseのセットアップ
-
-#### 5.1 Supabaseプロジェクトの作成
-
-1. [Supabase](https://supabase.com/)でプロジェクトを作成
-2. Project URLとAPI Keysを取得し、`.env.local`に設定
-
-#### 5.2 データベースマイグレーション
-
-Supabaseダッシュボードの**SQL Editor**で、`supabase/migrations/001_init.sql`の内容を実行:
-
-1. Supabaseダッシュボードにログイン
-2. 左メニューから「SQL Editor」を選択
-3. 「New query」をクリック
-4. `supabase/migrations/001_init.sql`の内容をコピー&ペースト
-5. 「Run」をクリックして実行
-
-または、Supabase CLIを使用:
-
-```bash
-# Supabase CLIをインストール
-npm install -g supabase
-
-# Supabaseにログイン
-supabase login
-
-# プロジェクトにリンク
-supabase link --project-ref <your-project-ref>
-
-# マイグレーションを適用
-supabase db push
-```
-
-### 6. 開発サーバーの起動
-
-```bash
-pnpm dev
-```
-
-ブラウザで [http://localhost:3000](http://localhost:3000) を開きます。
-
-## 初回セットアップフロー
-
-### 1. 管理者ユーザーの作成
-
-1. `/signup` にアクセスしてユーザー登録
-2. Supabaseダッシュボードの**Table Editor**で `user_approvals` テーブルを開く
-3. 登録したユーザーの `approved` を `true`、`role` を `admin` に変更:
-
-```sql
-UPDATE user_approvals
-SET approved = true, role = 'admin'
-WHERE email = 'your-email@example.com';
-```
-
-### 2. LinearからTeam・Projectを同期
-
-1. 管理者でログイン
-2. 画面右上の「管理画面」または「Team管理」に移動
-3. 「Linearから同期」ボタンをクリック
-4. Linear上のTeamとProjectがデータベースに同期されます
-
-### 3. Team・Projectにメンバーを割り当て
-
-1. 「Team管理」画面で各Teamの「メンバー編集」をクリック
-2. 承認済みユーザーを選択して保存
-3. Project管理でも同様にメンバーを割り当て
-
-### 4. タスクの同期と作業開始
-
-1. メインページに戻る
-2. 「Linearタスク同期」ボタンをクリック
-3. 自分にアサインされたLinear Issueがタスクとして表示されます
-4. タスクを選択して「開始」ボタンで作業時間の計測を開始
-
-## Google Sheets連携（オプション）
-
-### 1. Google Cloud Platformの設定
-
-1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェクトを作成
-2. **APIs & Services** → **Enable APIs and services**
-3. 「Google Sheets API」を検索して有効化
-4. **APIs & Services** → **Credentials** → **Create Credentials** → **Service account**
-5. サービスアカウントを作成し、JSONキーをダウンロード
-6. JSONキーの内容を1行にまとめて `.env.local` の `GOOGLE_SERVICE_ACCOUNT_KEY` に設定
-
-### 2. スプレッドシートの準備
-
-1. Google Sheetsで新しいスプレッドシートを作成
-2. スプレッドシートのIDをURLから取得: https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit
-3. `.env.local` の `GOOGLE_SPREADSHEET_ID` に設定
-4. サービスアカウントのメールアドレス（JSONキーの`client_email`）に、スプレッドシートの**編集権限**を付与
-
-### 3. シートの作成
-
-スプレッドシート内に以下のシートを作成:
-
-- `Daily Report` - 日次レポート用（自動で時間エントリが追加されます）
+---
 
 ## 使い方
 
-### タイムトラッキング
+### 1. タスクの作成と時間記録
 
-1. メインページでタスクを選択
-2. 「開始」ボタンでタイマーを開始
-3. 作業終了時に「停止」ボタンをクリック
-4. コメントを入力して「保存」
-5. Google Sheets連携が有効な場合、自動的にスプレッドシートに記録されます
+#### タスクを作成する
 
-### 週次カレンダー
+1. メイン画面の「新しいタスク」ボタンをクリック
+2. タスク名と色を設定
+3. 保存ボタンをクリック
 
-- 週単位で作業履歴を可視化
-- エントリをクリックして編集・削除が可能
-- 日付をまたぐエントリも正しく表示
-- 矢印ボタンで週を切り替え
+> **Tip**: Linear連携を有効にすると、LinearのIssueが自動的にタスクとして追加されます
 
-### 手動エントリ追加
+#### 作業時間を記録する
 
-週次カレンダーの右上にある小さな「手動追加」ボタン（意図的に目立たないデザイン）から、忘れた作業を後から追加できます。
+1. 記録したいタスクを選択
+2. 「開始」ボタンをクリック
+3. 作業が終わったら「停止」ボタンをクリック
+4. コメントを追加して保存
 
-### 管理機能（管理者のみ）
+![メイン画面のスクリーンショット](docs/screenshots/main-screen.png)
+<!-- スクリーンショットは後で追加してください -->
 
-- **ユーザー管理**: 新規ユーザーの承認・権限設定・削除
-- **Team管理**: Teamの同期とメンバーの割り当て
-- **Project管理**: Projectの同期とメンバーの割り当て
+### 2. 作業時間の確認
 
-## プロジェクト構成
+#### カレンダービューで確認
 
-```
-daily_report_system/
-├── app/                      # Next.js App Router
-│   ├── api/                  # APIルート
-│   │   ├── admin/           # 管理者用API
-│   │   ├── linear/          # Linear連携API
-│   │   ├── spreadsheet/     # Google Sheets連携API
-│   │   └── webhooks/        # Webhook受信
-│   ├── admin/               # 管理画面
-│   ├── auth/                # 認証関連
-│   ├── login/               # ログイン画面
-│   ├── signup/              # サインアップ画面
-│   └── page.tsx             # メインページ
-├── components/              # Reactコンポーネント
-│   ├── ui/                  # shadcn/ui コンポーネント
-│   ├── task-management.tsx  # タスク管理
-│   ├── task-timer.tsx       # タイマー
-│   ├── weekly-calendar.tsx  # 週次カレンダー
-│   ├── time-entry-dialog.tsx # エントリ編集
-│   ├── manual-time-entry-dialog.tsx # 手動エントリ追加
-│   ├── members-manager.tsx  # メンバー管理（統一コンポーネント）
-│   └── ...
-├── lib/                     # ユーティリティ・ロジック
-│   ├── linear/             # Linear API クライアント（モジュール化）
-│   │   ├── types.ts        # 型定義
-│   │   ├── issues.ts       # Issue操作
-│   │   ├── teams.ts        # Team操作
-│   │   ├── projects.ts     # Project操作
-│   │   └── index.ts        # エクスポート
-│   ├── contexts/           # React Context
-│   ├── hooks/              # カスタムフック
-│   ├── supabase.ts         # Supabaseクライアント
-│   ├── supabase-server.ts  # サーバーサイドSupabaseクライアント
-│   ├── google-sheets.ts    # Google Sheets操作
-│   └── types.ts            # 型定義
-├── supabase/
-│   └── migrations/         # DBマイグレーション
-│       └── 001_init.sql    # 統合初期化スクリプト
-├── scripts/                # ユーティリティスクリプト
-└── public/                 # 静的ファイル
-```
+- 週間カレンダーで1週間の作業時間を確認
+- タスクをクリックすると詳細情報を表示
+- 時間帯ごとの作業内容が一目で分かります
 
-## データベーススキーマ
+![カレンダービュー](docs/screenshots/calendar-view.png)
+<!-- スクリーンショットは後で追加してください -->
 
-主要なテーブル:
+#### チーム別の作業時間
 
-- `user_approvals`: ユーザー承認管理（email, approved, role, name）
-- `tasks`: タスク（Linear Issue連携）
-- `time_entries`: 作業時間記録
-- `linear_teams`: Linear Team情報
-- `linear_projects`: Linear Project情報
-- `user_team_memberships`: Teamメンバー関連（多対多）
-- `user_project_memberships`: Projectメンバー関連（多対多）
+- 「ユーザーTeam表示」タブでチーム全体の作業状況を確認
+- メンバーごとの作業時間や進捗を把握
+- プロジェクトの進行状況を可視化
 
-詳細は `supabase/migrations/001_init.sql` を参照してください。
+![チーム表示](docs/screenshots/team-view.png)
+<!-- スクリーンショットは後で追加してください -->
 
-## トラブルシューティング
+### 3. コメントの追加
 
-### Linear連携がうまくいかない
+作業を停止するときに、以下のような情報をコメントとして記録できます：
 
-1. `LINEAR_API_KEY` が正しく設定されているか確認
-2. Linear APIキーに適切な権限があるか確認（Settings → API → Personal API keys）
-3. ブラウザのコンソールでエラーメッセージを確認
+- 実施した作業内容
+- 進捗状況
+- 課題や気づき
+- 次回のタスク
 
-### Google Sheets連携でエラーが出る
+コメントは日報作成時に自動的に反映されます。
 
-1. サービスアカウントにスプレッドシートの**編集権限**があるか確認
-2. `GOOGLE_SERVICE_ACCOUNT_KEY` が正しいJSON形式か確認
-3. `GOOGLE_SPREADSHEET_ID` がURLから正しく取得できているか確認
-4. スプレッドシートに`Daily Report`シートが存在するか確認
+### 4. Google Sheetsでの管理
 
-### ユーザーがログインできない
+記録された作業時間は、自動的にGoogle Sheetsに出力されます：
 
-1. Supabaseダッシュボードで認証設定を確認
-2. メール確認が必要な場合、確認メールが届いているか確認
-3. `user_approvals` テーブルで `approved = true` になっているか確認
-4. ブラウザのキャッシュをクリアして再度試す
+- 日付、タスク名、開始時刻、終了時刻、作業時間、コメント
+- スプレッドシートで集計や分析が可能
+- 他のツールとの連携も簡単
 
-### タイムゾーンがずれる
+---
 
-1. ブラウザのタイムゾーン設定を確認
-2. タイマー画面右上のタイムゾーン選択で適切なタイムゾーンを選択
-3. タイムゾーン設定はlocalStorageに保存されます
+## Linear連携について
 
-### データベースマイグレーションのエラー
+### Linearとは？
 
-1. Supabaseダッシュボードの**SQL Editor**でエラーメッセージを確認
-2. RLS（Row Level Security）が有効になっているか確認
-3. 既存のテーブルがある場合、`DROP TABLE IF EXISTS`を使用するか手動で削除
+Linearは、エンジニアチーム向けのプロジェクト管理・Issue管理ツールです。
 
-## 開発
+### DayLogとの連携でできること
 
-### ビルド
+- Issue自動同期: LinearのIssueがDayLogのタスクとして自動追加
+- リアルタイム更新: Issueのステータス変更がリアルタイムで反映
+- チーム・プロジェクト構造: Linearのチーム・プロジェクト構造をそのまま利用
+- 担当者の自動設定: Issueの担当者が自動的にタスクに割り当て
+
+### Linear連携の使い方
+
+Linear連携が設定されている場合、以下のように自動的に動作します：
+
+1. LinearでIssueを作成 → DayLogに自動的にタスクとして追加
+2. Issueのステータス変更 → DayLogのタスクも自動更新
+3. Issueの担当者変更 → DayLogのタスク担当者も自動更新
+
+> **Note**: Linear連携の設定は管理者が行います。設定方法については管理者にお問い合わせください。
+
+---
+
+## 管理者向け情報
+
+### ユーザー管理
+
+#### 新規ユーザーの承認
+
+1. 管理画面（`/admin`）にアクセス
+2. 「承認待ちユーザー」タブで新規登録ユーザーを確認
+3. 「ユーザーとして承認」または「管理者として承認」をクリック
+
+#### ユーザーの削除
+
+- 「承認済みユーザー」タブから不要なユーザーを削除可能
+- 削除すると、データベースおよびSupabase Authからユーザーが削除されます
+- 時間エントリやタスクは保持されます
+
+![管理画面](docs/screenshots/admin-panel.png)
+<!-- スクリーンショットは後で追加してください -->
+
+### Linear連携の設定
+
+#### 必要な設定
+
+- Linear APIキー
+- Webhook Secret（複数のチームがある場合は複数設定可能）
+
+#### Issue同期スクリプト
+
+最新のIssueを同期するには、以下のコマンドを実行します：
 
 ```bash
-pnpm build
+npm run sync:linear
 ```
 
-### 型チェック
+- 最新200件のIssueを取得
+- 既に同期済みのIssueはスキップ
+- Rate limitに達した場合は自動的に停止
 
-```bash
-pnpm type-check
-```
+### Google Sheets連携の設定
 
-### Linting
+1. Google Cloud Consoleでサービスアカウントを作成
+2. サービスアカウントのJSONキーをダウンロード
+3. 環境変数に設定（`.env.local`）
+4. スプレッドシートにサービスアカウントのメールアドレスを編集権限付きで共有
 
-```bash
-pnpm lint
-```
+詳細は`.env.local.example`を参照してください。
 
-### 開発時のTips
+---
 
-- `console.log`はデバッグ用に多数残されています（本番環境でも問題診断に有用）
-- コンポーネントは機能ごとに分割されています
-- Linear APIクライアントは`lib/linear/`にモジュール化されています
+## よくある質問
 
-## セキュリティ
+### Q. タスクが自動的に停止されることはありますか？
 
-### 環境変数の管理
+A. 日付が変わると、自動的に23:59:59で停止され、新しい日の00:00:00から新しいエントリが作成されます。
 
-**重要**: 以下のファイルは絶対にGitにコミットしないでください:
+### Q. 過去の作業時間を編集できますか？
 
-- `.env.local` - 実際の環境変数
-- `*-service-account.json` - Google認証情報
-- `*.key`, `*.pem` - 秘密鍵
+A. カレンダービューから過去のエントリをクリックして、時間やコメントを編集できます。
 
-`.gitignore`で以下がすでに除外されています:
+### Q. Linear連携は必須ですか？
 
-- `.env*.local`
-- `*-service-account.json`
-- `*.key`, `*.pem`, `*.p12`
-- `secrets.json`, `.secrets/`
+A. いいえ、Linear連携なしでも作業時間の記録は可能です。手動でタスクを作成して使用できます。
 
-### 推奨事項
+### Q. Google Sheetsに出力される内容をカスタマイズできますか？
 
-1. `.env.local.example`をテンプレートとして使用
-2. 本番環境では環境変数を環境に直接設定
-3. APIキーは定期的にローテーション
-4. Supabase Service Role Keyは慎重に管理（データベース全体への管理者権限）
+A. 現在はフォーマットが固定されていますが、スプレッドシート上で自由に加工できます。
 
-## デプロイ
+### Q. チーム表示が見れません
 
-### Vercelへのデプロイ（推奨）
+A. チーム表示はメイン画面からのみ閲覧可能です。管理画面からは表示されません。
 
-1. [Vercel](https://vercel.com/)にプロジェクトをインポート
-2. 環境変数を設定（`.env.local`の内容をVercelの環境変数に設定）
-3. デプロイ
+---
 
-**注意**: 環境変数の設定を忘れずに行ってください。
+## サポート・お問い合わせ
 
-### その他のプラットフォーム
+- **Issues**: [GitHub Issues](https://github.com/CHU1PC/daily_report_system/issues)
+- **質問・要望**: Issueを作成してください
 
-Next.js 15のデプロイガイドを参照:
-https://nextjs.org/docs/app/building-your-application/deploying
+---
 
 ## ライセンス
 
-このプロジェクトはMITライセンスに従います。
+このプロジェクトはプライベートリポジトリです。
 
-## 貢献
+---
 
-プルリクエストを歓迎します。大きな変更の場合は、まずIssueを開いて変更内容を議論してください。
+## 更新履歴
 
-### 開発の流れ
+### 最新版
 
-1. このリポジトリをフォーク
-2. フィーチャーブランチを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をコミット (`git commit -m 'Add amazing feature'`)
-4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成
-
-## サポート
-
-問題が発生した場合は、GitHubのIssueを作成してください。
+- ユーザーTeam表示機能（メイン画面のみ）
+- Linear Issue同期スクリプト
+- 複数Webhook対応
+- 管理画面でのユーザー削除機能（認証拒否対応）
+- 日を跨ぐタスクのスプレッドシート自動同期
+- カレンダー表示の修正（タイムゾーン対応）
