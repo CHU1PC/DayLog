@@ -8,8 +8,9 @@ interface LinearWebhookPayload {
   type: string
   data: {
     id: string
-    identifier: string
-    title: string
+    identifier?: string
+    title?: string // Issueにのみ存在
+    name?: string // Project/Teamに存在
     description?: string
     priority?: number
     updatedAt?: string
@@ -32,7 +33,7 @@ interface LinearWebhookPayload {
       email: string
     }
   }
-  url: string
+  url?: string
   createdAt: string
 }
 
@@ -150,12 +151,15 @@ async function handleProjectEvent(supabase: any, payload: LinearWebhookPayload) 
   const { action, data } = payload
 
   if (action === 'create' || action === 'update') {
+    // Projectのnameフィールドを使用（フォールバックとしてdescriptionの最初の50文字）
+    const projectName = data.name || data.description?.substring(0, 50) || 'Unnamed Project'
+
     const { error } = await supabase
       .from('linear_projects')
       .upsert({
         linear_project_id: data.id,
         linear_team_id: data.team?.id,
-        name: data.title || data.identifier,
+        name: projectName,
         description: data.description,
         state: data.state?.name,
         updated_at: new Date().toISOString(),
@@ -168,7 +172,7 @@ async function handleProjectEvent(supabase: any, payload: LinearWebhookPayload) 
       return NextResponse.json({ error: 'Failed to upsert project' }, { status: 500 })
     }
 
-    console.log(`[Linear Webhook] Project ${action}d:`, data.identifier)
+    console.log(`[Linear Webhook] Project ${action}d:`, projectName)
     return NextResponse.json({ message: `Project ${action}d successfully` }, { status: 200 })
   } else if (action === 'remove') {
     const { error } = await supabase
