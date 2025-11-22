@@ -110,25 +110,22 @@ export async function GET() {
           teamIssuesMap.get(issue.linear_team_id)!.push(issue)
         })
 
-        // 各TeamのIssuesをソート
+        // 各TeamのIssuesをソート: Done以外を上に、その上で優先度順（高い方が上）
         teamIssuesMap.forEach((issues) => {
           issues.sort((a, b) => {
-            // ステータスでソート: unstarted, started, completed, canceled
-            const statusOrder: Record<string, number> = {
-              'unstarted': 1,
-              'started': 2,
-              'completed': 3,
-              'canceled': 4
+            // 1. まずDone（completed/canceled）かどうかで分ける
+            const aIsDone = a.linear_state_type === 'completed' || a.linear_state_type === 'canceled'
+            const bIsDone = b.linear_state_type === 'completed' || b.linear_state_type === 'canceled'
+
+            if (aIsDone !== bIsDone) {
+              return aIsDone ? 1 : -1 // Done以外を上に
             }
-            const orderA = statusOrder[a.linear_state_type] || 99
-            const orderB = statusOrder[b.linear_state_type] || 99
 
-            if (orderA !== orderB) return orderA - orderB
+            // 2. 同じグループ内では優先度順（1が最高、4が最低、0は未設定）
+            const aPriority = a.priority || 999 // 優先度未設定は最下位
+            const bPriority = b.priority || 999
 
-            // 同じステータスなら優先度でソート
-            const priorityA = a.priority || 0
-            const priorityB = b.priority || 0
-            return priorityA - priorityB
+            return aPriority - bPriority // 数字が小さい方（高優先度）が上
           })
         })
 

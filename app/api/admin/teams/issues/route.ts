@@ -93,16 +93,19 @@ export async function GET() {
           const memberData = memberIssuesMap.get(task.assignee_email)!
           memberData.issues.push(task)
 
-          // 優先度スコア計算: 1=Urgent(緊急)→4点, 2=High(高)→3点, 3=Medium(中)→2点, 4=Low(低)→1点, 0=None→0点
-          // Linearの優先度は逆順なので注意
-          const priorityPoints: Record<number, number> = {
-            0: 0, // None
-            1: 4, // Urgent
-            2: 3, // High
-            3: 2, // Medium
-            4: 1  // Low
+          // 優先度スコア計算: completedとcanceled以外のみを計算
+          const isDone = task.linear_state_type === 'completed' || task.linear_state_type === 'canceled'
+          if (!isDone) {
+            // 1=Urgent(緊急)→4点, 2=High(高)→3点, 3=Medium(中)→2点, 4=Low(低)→1点, 0=None→0点
+            const priorityPoints: Record<number, number> = {
+              0: 0, // None
+              1: 4, // Urgent
+              2: 3, // High
+              3: 2, // Medium
+              4: 1  // Low
+            }
+            memberData.priorityScore += priorityPoints[task.priority || 0] || 0
           }
-          memberData.priorityScore += priorityPoints[task.priority || 0] || 0
         })
 
         // メンバーを優先度スコアでソート（降順）
@@ -111,22 +114,19 @@ export async function GET() {
           .map(({ user, issues, priorityScore }) => ({
             ...user,
             issues: issues.sort((a, b) => {
-              // ステータスでソート: unstarted, started, completed, canceled
-              const statusOrder: Record<string, number> = {
-                'unstarted': 1,
-                'started': 2,
-                'completed': 3,
-                'canceled': 4
+              // 1. まずDone（completed/canceled）かどうかで分ける
+              const aIsDone = a.linear_state_type === 'completed' || a.linear_state_type === 'canceled'
+              const bIsDone = b.linear_state_type === 'completed' || b.linear_state_type === 'canceled'
+
+              if (aIsDone !== bIsDone) {
+                return aIsDone ? 1 : -1 // Done以外を上に
               }
-              const orderA = statusOrder[a.linear_state_type] || 99
-              const orderB = statusOrder[b.linear_state_type] || 99
 
-              if (orderA !== orderB) return orderA - orderB
+              // 2. 同じグループ内では優先度順（1が最高、4が最低、0は未設定）
+              const aPriority = a.priority || 999 // 優先度未設定は最下位
+              const bPriority = b.priority || 999
 
-              // 同じステータスなら優先度でソート
-              const priorityA = a.priority || 0
-              const priorityB = b.priority || 0
-              return priorityA - priorityB
+              return aPriority - bPriority // 数字が小さい方（高優先度）が上
             }),
             priorityScore
           }))
