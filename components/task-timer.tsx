@@ -10,6 +10,14 @@ import { Play, Square, Clock } from "lucide-react"
 import { generateId } from "@/lib/utils"
 import { useAuth } from "@/lib/contexts/AuthContext"
 import { logger } from "@/lib/logger"
+import {
+  isNotificationSupported,
+  requestNotificationPermission,
+  showTimerStartNotification,
+  showTimerStopNotification,
+  showTimerProgressNotification,
+  closeNotification,
+} from "@/lib/notifications"
 
 // タイムゾーン定義
 const TIMEZONES = {
@@ -57,6 +65,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
   const [currentEntryId, setCurrentEntryId] = useState<string>("")
   const [timezone, setTimezone] = useState<TimezoneKey>('Asia/Tokyo')
   const [isSaving, setIsSaving] = useState(false)
+  const [notificationInterval, setNotificationInterval] = useState<number>(3600000) // デフォルト: 1時間
 
   // スプレッドシートを更新（行がなければ追記）する共通ヘルパー
   const syncSpreadsheetEntry = async (entryId: string, context: string) => {
@@ -102,6 +111,39 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       console.error(`[syncSpreadsheetEntry] Error (${context}):`, spreadsheetError)
     }
   }
+
+  // 通知権限をリクエスト & 通知間隔を読み込み
+  useEffect(() => {
+    if (isNotificationSupported()) {
+      requestNotificationPermission()
+    }
+
+    // localStorageから通知間隔を読み込み
+    const savedInterval = localStorage.getItem('timerNotificationInterval')
+    if (savedInterval) {
+      setNotificationInterval(Number(savedInterval))
+    }
+  }, [])
+
+  // localStorageの変更を監視して通知間隔を更新
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedInterval = localStorage.getItem('timerNotificationInterval')
+      if (savedInterval) {
+        setNotificationInterval(Number(savedInterval))
+      }
+    }
+
+    // storageイベントは他のタブからの変更を検知するため、
+    // 同じタブ内での変更も検知できるようにカスタムイベントを使用
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('notificationIntervalChanged', handleStorageChange)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('notificationIntervalChanged', handleStorageChange)
+    }
+  }, [])
 
   // タイムゾーンをlocalStorageから読み込み
   useEffect(() => {
@@ -218,6 +260,38 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       if (interval) clearInterval(interval)
     }
   }, [isRunning, startTime, selectedTaskId, currentEntryId, comment, pendingComment])
+
+  // タイマー実行中の継続通知（ユーザー設定の間隔で更新）
+  useEffect(() => {
+    let notificationTimer: NodeJS.Timeout
+
+    if (isRunning && selectedTaskId) {
+      // ユーザー設定の通知間隔を使用
+      const notificationIntervalMs = notificationInterval
+
+      // 通知が無効（0）の場合は何もしない
+      if (notificationIntervalMs === 0) {
+        return
+      }
+
+      // 初回通知
+      const taskName = tasks.find(t => t.id === selectedTaskId)?.name || 'タスク'
+      showTimerProgressNotification(taskName, formatTime(elapsedSeconds))
+
+      // 設定された間隔で通知を更新
+      notificationTimer = setInterval(() => {
+        const taskName = tasks.find(t => t.id === selectedTaskId)?.name || 'タスク'
+        showTimerProgressNotification(taskName, formatTime(elapsedSeconds))
+      }, notificationIntervalMs)
+    } else {
+      // タイマー停止時は通知をクリア
+      closeNotification('timer-progress')
+    }
+
+    return () => {
+      if (notificationTimer) clearInterval(notificationTimer)
+    }
+  }, [isRunning, selectedTaskId, elapsedSeconds, tasks, notificationInterval])
 
   useEffect(() => {
     if (selectedTaskId && !comment) {
@@ -343,6 +417,10 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       setStartTime(now)
       setIsRunning(true)
       setElapsedSeconds(0)
+
+      // タイマー開始通知を表示
+      const taskName = tasks.find(t => t.id === selectedTaskId)?.name || 'タスク'
+      showTimerStartNotification(taskName)
     } catch (error) {
       console.error('[TaskTimer] Failed to start timer:', error)
     }
@@ -427,6 +505,11 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       setIsSaving(false)
       return
     }
+
+    // タイマー停止通知を表示
+    const taskName = tasks.find(t => t.id === selectedTaskId)?.name || 'タスク'
+    const duration = formatTime(elapsedSeconds)
+    showTimerStopNotification(taskName, duration)
 
     setIsRunning(false)
     setStartTime("")
