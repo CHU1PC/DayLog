@@ -281,7 +281,11 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       // 設定された間隔で通知を更新
       notificationTimer = setInterval(() => {
         const taskName = tasks.find(t => t.id === selectedTaskId)?.name || 'タスク'
-        showTimerProgressNotification(taskName, formatTime(elapsedSeconds))
+        // intervalの中で現在の経過時間を計算
+        const now = new Date()
+        const start = new Date(startTime)
+        const elapsed = Math.floor((now.getTime() - start.getTime()) / 1000)
+        showTimerProgressNotification(taskName, formatTime(Math.max(0, elapsed)))
       }, notificationIntervalMs)
     } else {
       // タイマー停止時は通知をクリア
@@ -291,7 +295,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
     return () => {
       if (notificationTimer) clearInterval(notificationTimer)
     }
-  }, [isRunning, selectedTaskId, elapsedSeconds, tasks, notificationInterval])
+  }, [isRunning, selectedTaskId, tasks, startTime, notificationInterval])
 
   useEffect(() => {
     if (selectedTaskId && !comment) {
