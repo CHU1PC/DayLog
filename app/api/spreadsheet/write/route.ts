@@ -132,17 +132,21 @@ export async function POST(request: NextRequest) {
 
     console.log('[Spreadsheet API] Sheet data to write:', sheetData)
 
-    // Google Sheetsに書き込み
-    await writeTimeEntryToSheet(sheetData)
+    // Google Sheetsに書き込み（重複チェック付き）
+    const result = await writeTimeEntryToSheet(sheetData)
 
-    console.log('Successfully wrote time entry to spreadsheet:', {
+    console.log('[Spreadsheet API] Write result:', {
       timeEntryId,
       date: sheetData.date,
+      action: result.action,
     })
 
     return NextResponse.json({
-      message: 'Time entry written to spreadsheet successfully',
+      message: result.action === 'created'
+        ? 'Time entry written to spreadsheet successfully'
+        : 'Time entry already exists in spreadsheet',
       timeEntryId,
+      action: result.action,
     }, { status: 200 })
 
   } catch (error) {

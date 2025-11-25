@@ -132,23 +132,29 @@ export async function POST(request: NextRequest) {
 
     console.log('[Spreadsheet Update API] Sheet data to update:', sheetData)
 
-    // Google Sheetsで更新（見つからない場合は追記で補填）
-    try {
-      await updateTimeEntryInSheet(sheetData)
-    } catch (err) {
-      // 既存行が見つからない場合はappendで補完
-      console.warn('[Spreadsheet Update API] Update failed, falling back to append:', err)
-      await writeTimeEntryToSheet(sheetData)
+    // Google Sheetsで更新を試行
+    const updateResult = await updateTimeEntryInSheet(sheetData)
+
+    let action: string
+    if (updateResult.action === 'not_found') {
+      // 見つからない場合は新規作成を試行（重複チェック付き）
+      console.log('[Spreadsheet Update API] Entry not found, attempting to write:', timeEntryId)
+      const writeResult = await writeTimeEntryToSheet(sheetData)
+      action = writeResult.action === 'created' ? 'created' : 'already_exists'
+    } else {
+      action = 'updated'
     }
 
-    console.log('Successfully updated time entry in spreadsheet:', {
+    console.log('[Spreadsheet Update API] Successfully processed time entry:', {
       timeEntryId,
       date: sheetData.date,
+      action,
     })
 
     return NextResponse.json({
-      message: 'Time entry updated in spreadsheet successfully',
+      message: 'Time entry processed in spreadsheet successfully',
       timeEntryId,
+      action,
     }, { status: 200 })
 
   } catch (error) {

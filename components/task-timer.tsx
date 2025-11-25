@@ -68,7 +68,8 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
   const [notificationInterval, setNotificationInterval] = useState<number>(3600000) // デフォルト: 1時間
   const [showNameRequiredDialog, setShowNameRequiredDialog] = useState(false)
 
-  // スプレッドシートを更新（行がなければ追記）する共通ヘルパー
+  // スプレッドシートを同期する共通ヘルパー
+  // update APIが内部でnot_foundの場合はwriteを呼び出すため、フロントエンドでのフォールバックは不要
   const syncSpreadsheetEntry = async (entryId: string, context: string) => {
     console.log(`[syncSpreadsheetEntry] start (${context})`, entryId)
     try {
@@ -79,35 +80,19 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       })
 
       if (updateRes.ok) {
-        console.log(`[syncSpreadsheetEntry] Spreadsheet updated (${context}) status=${updateRes.status}`)
+        const result = await updateRes.json()
+        console.log(`[syncSpreadsheetEntry] Spreadsheet synced (${context}) action=${result.action}`)
         return
       }
 
+      // エラーの場合のみログを出力
       let updateError: unknown = null
       try {
         updateError = await updateRes.json()
       } catch (e) {
         updateError = 'Failed to parse update error response'
       }
-      console.error(`[syncSpreadsheetEntry] Update failed (${context}):`, updateRes.status, updateError)
-
-      // 行が存在しないなどで更新できなかった場合は追記を試みる
-      const writeRes = await fetch('/api/spreadsheet/write', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timeEntryId: entryId }),
-      })
-      if (!writeRes.ok) {
-        let writeError: unknown = null
-        try {
-          writeError = await writeRes.json()
-        } catch (e) {
-          writeError = 'Failed to parse write error response'
-        }
-        console.error(`[syncSpreadsheetEntry] Fallback write failed (${context}):`, writeRes.status, writeError)
-      } else {
-        console.log(`[syncSpreadsheetEntry] Fallback write succeeded (${context}) status=${writeRes.status}`)
-      }
+      console.error(`[syncSpreadsheetEntry] Sync failed (${context}):`, updateRes.status, updateError)
     } catch (spreadsheetError) {
       console.error(`[syncSpreadsheetEntry] Error (${context}):`, spreadsheetError)
     }

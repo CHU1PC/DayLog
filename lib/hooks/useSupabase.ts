@@ -528,8 +528,9 @@ export function useSupabase() {
       console.log('[updateTimeEntry] Local state updated successfully')
 
       // スプレッドシートにも更新を反映
+      // update APIが内部でnot_foundの場合はwriteを呼び出すため、フォールバック不要
       try {
-        console.log('[updateTimeEntry] Updating spreadsheet for entry:', id)
+        console.log('[updateTimeEntry] Syncing spreadsheet for entry:', id)
         const response = await fetch('/api/spreadsheet/update', {
           method: 'POST',
           headers: {
@@ -540,14 +541,15 @@ export function useSupabase() {
 
         if (!response.ok) {
           const errorData = await response.json()
-          console.error('[updateTimeEntry] Spreadsheet update failed with status:', response.status)
+          console.error('[updateTimeEntry] Spreadsheet sync failed with status:', response.status)
           console.error('[updateTimeEntry] Error details:', errorData)
           // スプレッドシート更新のエラーは致命的ではないので警告のみ
         } else {
-          console.log('[updateTimeEntry] Spreadsheet updated successfully')
+          const result = await response.json()
+          console.log('[updateTimeEntry] Spreadsheet synced, action:', result.action)
         }
       } catch (spreadsheetError) {
-        console.error('[updateTimeEntry] Error updating spreadsheet:', spreadsheetError)
+        console.error('[updateTimeEntry] Error syncing spreadsheet:', spreadsheetError)
         // スプレッドシート更新のエラーは致命的ではないので処理を続行
       }
     } catch (err) {

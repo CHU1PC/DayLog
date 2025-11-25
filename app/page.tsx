@@ -59,6 +59,7 @@ export default function HomePage() {
       console.log('[handleAddEntry] Entry added, ID:', savedEntry?.id)
 
       // 完了したエントリ（endTimeがある）の場合、スプレッドシートに同期
+      // update APIが内部でnot_foundの場合はwriteを呼び出すため、フォールバック不要
       if (savedEntry?.id && entry.endTime) {
         console.log('[handleAddEntry] Syncing to spreadsheet:', savedEntry.id)
         try {
@@ -69,19 +70,10 @@ export default function HomePage() {
           })
 
           if (updateRes.ok) {
-            console.log('[handleAddEntry] Spreadsheet updated successfully')
+            const result = await updateRes.json()
+            console.log('[handleAddEntry] Spreadsheet synced, action:', result.action)
           } else {
-            // 行が存在しない場合は追記
-            const writeRes = await fetch('/api/spreadsheet/write', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ timeEntryId: savedEntry.id }),
-            })
-            if (writeRes.ok) {
-              console.log('[handleAddEntry] Spreadsheet write succeeded')
-            } else {
-              console.error('[handleAddEntry] Spreadsheet write failed')
-            }
+            console.error('[handleAddEntry] Spreadsheet sync failed:', updateRes.status)
           }
         } catch (spreadsheetError) {
           console.error('[handleAddEntry] Error syncing to spreadsheet:', spreadsheetError)
