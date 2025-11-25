@@ -12,9 +12,18 @@ export const metadata: Metadata = {
   title: "DayLog",
   description: "時間管理と日報・月報作成システム",
   generator: "Next.js",
+  manifest: "/manifest.json",
   icons: {
-    icon: "/icon.png",
-    apple: "/icon.png",
+    icon: "/icon-192x192.png",
+    apple: "/icon-192x192.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "DayLog",
+  },
+  formatDetection: {
+    telephone: false,
   },
   // 開発環境でキャッシュを完全に無効化
   ...(process.env.NODE_ENV === 'development' && {
@@ -30,6 +39,7 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  themeColor: "#0a0a0a",
 }
 
 export default function RootLayout({
