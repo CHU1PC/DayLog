@@ -121,9 +121,14 @@ export interface TimeEntryData {
   endTime: string // 終了時刻
 }
 
+export interface WriteTimeEntryResult {
+  success: boolean
+  action: 'created' | 'already_exists'
+}
+
 export async function writeTimeEntryToSheet(
   data: TimeEntryData
-): Promise<void> {
+): Promise<WriteTimeEntryResult> {
   try {
     const sheets = getGoogleSheetsClient()
     const spreadsheetId = getSpreadsheetId()
@@ -134,6 +139,23 @@ export async function writeTimeEntryToSheet(
 
     // シートが存在することを確認（なければ作成）
     await ensureMonthlySheetExists(sheets, spreadsheetId, sheetName)
+
+    // 重複チェック: 同じtimeEntryIdが既に存在するか確認
+    const existingResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!A:A`,
+    })
+
+    const existingRows = existingResponse.data.values
+    if (existingRows && existingRows.length > 1) {
+      const existingEntryIndex = existingRows.findIndex(
+        (row, index) => index > 0 && row[0] === data.timeEntryId
+      )
+      if (existingEntryIndex !== -1) {
+        console.log(`[writeTimeEntryToSheet] Entry already exists, skipping: ${data.timeEntryId}`)
+        return { success: true, action: 'already_exists' }
+      }
+    }
 
     // 書き込むデータを配列形式に変換
     const rowData = [
@@ -162,17 +184,23 @@ export async function writeTimeEntryToSheet(
       },
     })
 
-    console.log(`Time entry written to sheet: ${sheetName}`)
+    console.log(`[writeTimeEntryToSheet] Time entry written to sheet: ${sheetName}`)
+    return { success: true, action: 'created' }
   } catch (error) {
-    console.error('Error writing time entry to sheet:', error)
+    console.error('[writeTimeEntryToSheet] Error writing time entry to sheet:', error)
     throw error
   }
+}
+
+export interface UpdateTimeEntryResult {
+  success: boolean
+  action: 'updated' | 'not_found'
 }
 
 // 時間エントリーをスプレッドシートで更新
 export async function updateTimeEntryInSheet(
   data: TimeEntryData
-): Promise<void> {
+): Promise<UpdateTimeEntryResult> {
   try {
     const sheets = getGoogleSheetsClient()
     const spreadsheetId = getSpreadsheetId()
@@ -192,11 +220,18 @@ export async function updateTimeEntryInSheet(
 
     const rows = response.data.values
     if (!rows || rows.length <= 1) {
-      throw new Error(`Time entry not found in sheet: ${sheetName}`)
+      console.log(`[updateTimeEntryInSheet] No data rows in sheet: ${sheetName}`)
+      return { success: true, action: 'not_found' }
     }
 
     // エントリーIDが一致する行を見つける（ヘッダー行をスキップ）
     const rowIndex = rows.findIndex((row, index) => index > 0 && row[0] === data.timeEntryId)
+
+    if (rowIndex === -1) {
+      // 見つからない場合は明確にnot_foundを返す（appendはしない）
+      console.log(`[updateTimeEntryInSheet] Entry ID not found in sheet: ${data.timeEntryId}`)
+      return { success: true, action: 'not_found' }
+    }
 
     const rowData = [
       [
@@ -214,19 +249,6 @@ export async function updateTimeEntryInSheet(
       ],
     ]
 
-    if (rowIndex === -1) {
-      // 見つからない場合は新規追加（初回書き込み時の重複防止）
-      console.warn('[updateTimeEntryInSheet] Entry ID not found in sheet. Appending new row:', data.timeEntryId)
-      await sheets.spreadsheets.values.append({
-        spreadsheetId,
-        range: `${sheetName}!A:K`,
-        valueInputOption: 'RAW',
-        requestBody: { values: rowData },
-      })
-      console.log(`Time entry appended to sheet: ${sheetName}`)
-      return
-    }
-
     // 該当行を更新（行番号は1-indexed）
     await sheets.spreadsheets.values.update({
       spreadsheetId,
@@ -237,9 +259,10 @@ export async function updateTimeEntryInSheet(
       },
     })
 
-    console.log(`Time entry updated in sheet: ${sheetName}, row: ${rowIndex + 1}`)
+    console.log(`[updateTimeEntryInSheet] Time entry updated in sheet: ${sheetName}, row: ${rowIndex + 1}`)
+    return { success: true, action: 'updated' }
   } catch (error) {
-    console.error('Error updating time entry in sheet:', error)
+    console.error('[updateTimeEntryInSheet] Error updating time entry in sheet:', error)
     throw error
   }
 }
