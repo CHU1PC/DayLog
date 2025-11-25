@@ -715,6 +715,13 @@ COMMENT ON POLICY "Admins can delete all tasks" ON public.tasks IS '管理者は
 -- セクション13: トリガー
 -- ============================================================================
 
+-- 既存のトリガーを削除（冪等性のため）
+DROP TRIGGER IF EXISTS update_linear_projects_updated_at ON public.linear_projects;
+DROP TRIGGER IF EXISTS update_linear_teams_updated_at ON public.linear_teams;
+DROP TRIGGER IF EXISTS update_user_project_memberships_updated_at ON public.user_project_memberships;
+DROP TRIGGER IF EXISTS update_user_team_memberships_updated_at ON public.user_team_memberships;
+DROP TRIGGER IF EXISTS trigger_auto_update_project_team ON tasks;
+
 -- linear_projectsのupdated_at自動更新トリガー
 CREATE TRIGGER update_linear_projects_updated_at
   BEFORE UPDATE ON public.linear_projects
