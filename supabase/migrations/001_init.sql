@@ -214,6 +214,12 @@ ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 -- セクション6: RLSポリシー - linear_projects
 -- ============================================================================
 
+-- 既存のポリシーを削除（冪等性のため）
+DROP POLICY IF EXISTS "Admins can view all projects" ON public.linear_projects;
+DROP POLICY IF EXISTS "Admins can insert projects" ON public.linear_projects;
+DROP POLICY IF EXISTS "Admins can update projects" ON public.linear_projects;
+DROP POLICY IF EXISTS "Users can view all projects" ON public.linear_projects;
+
 -- 管理者は全てのプロジェクトを閲覧・編集可能
 CREATE POLICY "Admins can view all projects"
   ON public.linear_projects
@@ -263,6 +269,12 @@ CREATE POLICY "Users can view all projects"
 -- セクション7: RLSポリシー - linear_teams
 -- ============================================================================
 
+-- 既存のポリシーを削除（冪等性のため）
+DROP POLICY IF EXISTS "Admins can view all teams" ON public.linear_teams;
+DROP POLICY IF EXISTS "Admins can insert teams" ON public.linear_teams;
+DROP POLICY IF EXISTS "Admins can update teams" ON public.linear_teams;
+DROP POLICY IF EXISTS "Users can view all teams" ON public.linear_teams;
+
 -- 管理者は全てのTeamを閲覧・編集可能
 CREATE POLICY "Admins can view all teams"
   ON public.linear_teams
@@ -311,6 +323,13 @@ CREATE POLICY "Users can view all teams"
 -- ============================================================================
 -- セクション8: RLSポリシー - user_project_memberships
 -- ============================================================================
+
+-- 既存のポリシーを削除（冪等性のため）
+DROP POLICY IF EXISTS "Admins can view all memberships" ON public.user_project_memberships;
+DROP POLICY IF EXISTS "Admins can insert memberships" ON public.user_project_memberships;
+DROP POLICY IF EXISTS "Admins can update memberships" ON public.user_project_memberships;
+DROP POLICY IF EXISTS "Admins can delete memberships" ON public.user_project_memberships;
+DROP POLICY IF EXISTS "Users can view their own memberships" ON public.user_project_memberships;
 
 -- 管理者は全ての所属関係を閲覧・編集可能
 CREATE POLICY "Admins can view all memberships"
@@ -367,6 +386,13 @@ CREATE POLICY "Users can view their own memberships"
 -- セクション9: RLSポリシー - user_team_memberships
 -- ============================================================================
 
+-- 既存のポリシーを削除（冪等性のため）
+DROP POLICY IF EXISTS "Admins can view all team memberships" ON public.user_team_memberships;
+DROP POLICY IF EXISTS "Admins can insert team memberships" ON public.user_team_memberships;
+DROP POLICY IF EXISTS "Admins can update team memberships" ON public.user_team_memberships;
+DROP POLICY IF EXISTS "Admins can delete team memberships" ON public.user_team_memberships;
+DROP POLICY IF EXISTS "Users can view their own team memberships" ON public.user_team_memberships;
+
 -- 管理者は全ての所属関係を閲覧・編集可能
 CREATE POLICY "Admins can view all team memberships"
   ON public.user_team_memberships
@@ -422,6 +448,10 @@ CREATE POLICY "Users can view their own team memberships"
 -- セクション10: RLSポリシー - user_approvals
 -- ============================================================================
 
+-- 既存のポリシーを削除（冪等性のため）
+DROP POLICY IF EXISTS "Admins can update all users" ON public.user_approvals;
+DROP POLICY IF EXISTS "Users can update their own name" ON public.user_approvals;
+
 -- 管理者は全てのユーザーを更新可能
 CREATE POLICY "Admins can update all users"
   ON public.user_approvals
@@ -454,6 +484,16 @@ COMMENT ON POLICY "Users can update their own name" ON public.user_approvals IS 
 -- ============================================================================
 -- セクション11: RLSポリシー - time_entries
 -- ============================================================================
+
+-- 既存のポリシーを削除（冪等性のため）
+DROP POLICY IF EXISTS "Users can view their own time entries" ON public.time_entries;
+DROP POLICY IF EXISTS "Users can insert their own time entries" ON public.time_entries;
+DROP POLICY IF EXISTS "Users can update their own time entries" ON public.time_entries;
+DROP POLICY IF EXISTS "Users can delete their own time entries" ON public.time_entries;
+DROP POLICY IF EXISTS "Admins can view all time entries" ON public.time_entries;
+DROP POLICY IF EXISTS "Admins can insert all time entries" ON public.time_entries;
+DROP POLICY IF EXISTS "Admins can update all time entries" ON public.time_entries;
+DROP POLICY IF EXISTS "Admins can delete all time entries" ON public.time_entries;
 
 -- ユーザーは自分のtime_entriesを閲覧可能
 CREATE POLICY "Users can view their own time entries"
@@ -551,6 +591,16 @@ COMMENT ON POLICY "Admins can delete all time entries" ON public.time_entries IS
 -- ============================================================================
 -- セクション12: RLSポリシー - tasks
 -- ============================================================================
+
+-- 既存のポリシーを削除（冪等性のため）
+DROP POLICY IF EXISTS "Users can view all tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Users can insert their own tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Users can update their own tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Users can delete their own tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Admins can view all tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Admins can insert all tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Admins can update all tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Admins can delete all tasks" ON public.tasks;
 
 -- 全ユーザーは全てのtasksを閲覧可能（チーム作業のため）
 CREATE POLICY "Users can view all tasks"
