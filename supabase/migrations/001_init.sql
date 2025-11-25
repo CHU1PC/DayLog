@@ -188,7 +188,14 @@ CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);
 CREATE INDEX IF NOT EXISTS idx_tasks_assignee_email ON tasks(assignee_email);
 
 -- tasksのUNIQUE制約（linear_issue_idは一意、NULL値は除外）
-ALTER TABLE tasks ADD CONSTRAINT IF NOT EXISTS unique_linear_issue_id UNIQUE (linear_issue_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'unique_linear_issue_id'
+    ) THEN
+        ALTER TABLE tasks ADD CONSTRAINT unique_linear_issue_id UNIQUE (linear_issue_id);
+    END IF;
+END $$;
 
 COMMENT ON CONSTRAINT unique_linear_issue_id ON tasks IS 'Linear IssueごとにTaskは1つのみ（NULL値は除外）';
 
