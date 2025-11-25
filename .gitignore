@@ -108,3 +108,9 @@ package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
 # bun.lockb
+
+# PWA build files
+public/sw.js
+public/workbox-*.js
+public/sw.js.map
+public/workbox-*.js.map
