@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev -H",
+    "dev": "next dev -H 0.0.0.0",
     "dev:host": "next dev -H",
     "lint": "eslint .",
     "start": "next start",
