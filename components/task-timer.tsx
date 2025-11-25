@@ -264,8 +264,9 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
   // タイマー実行中の継続通知（ユーザー設定の間隔で更新）
   useEffect(() => {
     let notificationTimer: NodeJS.Timeout
+    let initialTimer: NodeJS.Timeout
 
-    if (isRunning && selectedTaskId) {
+    if (isRunning && selectedTaskId && startTime) {
       // ユーザー設定の通知間隔を使用
       const notificationIntervalMs = notificationInterval
 
@@ -274,25 +275,34 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
         return
       }
 
-      // 初回通知
       const taskName = tasks.find(t => t.id === selectedTaskId)?.name || 'タスク'
-      showTimerProgressNotification(taskName, formatTime(elapsedSeconds))
+      const start = new Date(startTime).getTime()
+      const now = Date.now()
+      const elapsedMs = now - start
 
-      // 設定された間隔で通知を更新
-      notificationTimer = setInterval(() => {
-        const taskName = tasks.find(t => t.id === selectedTaskId)?.name || 'タスク'
-        // intervalの中で現在の経過時間を計算
-        const now = new Date()
-        const start = new Date(startTime)
-        const elapsed = Math.floor((now.getTime() - start.getTime()) / 1000)
-        showTimerProgressNotification(taskName, formatTime(Math.max(0, elapsed)))
-      }, notificationIntervalMs)
+      // 次の通知までの残り時間を計算（startTimeを基準）
+      // 例: 間隔が5分(300000ms)で、経過時間が1分3秒(63000ms)の場合
+      // 次の通知は 300000 - (63000 % 300000) = 300000 - 63000 = 237000ms後（約3分57秒後）
+      const timeUntilNextNotification = notificationIntervalMs - (elapsedMs % notificationIntervalMs)
+
+      // 最初の通知を正確なタイミングで設定
+      initialTimer = setTimeout(() => {
+        const currentElapsed = Math.floor((Date.now() - start) / 1000)
+        showTimerProgressNotification(taskName, formatTime(Math.max(0, currentElapsed)))
+
+        // その後は設定された間隔で通知を更新
+        notificationTimer = setInterval(() => {
+          const currentElapsed = Math.floor((Date.now() - start) / 1000)
+          showTimerProgressNotification(taskName, formatTime(Math.max(0, currentElapsed)))
+        }, notificationIntervalMs)
+      }, timeUntilNextNotification)
     } else {
       // タイマー停止時は通知をクリア
       closeNotification('timer-progress')
     }
 
     return () => {
+      if (initialTimer) clearTimeout(initialTimer)
       if (notificationTimer) clearInterval(notificationTimer)
     }
   }, [isRunning, selectedTaskId, tasks, startTime, notificationInterval])
