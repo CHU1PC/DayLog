@@ -122,7 +122,6 @@ export async function POST(request: NextRequest) {
       teamName: teamName,
       projectName: projectName,
       issueName: task?.linear_identifier || task?.name || null,
-      issueDescription: task?.description || null,
       comment: timeEntry.comment || '',
       workingHours,
       assigneeName: assigneeName,
