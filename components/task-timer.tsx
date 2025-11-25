@@ -54,7 +54,7 @@ interface TaskTimerProps {
 }
 
 export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHeaderMode = false }: TaskTimerProps) {
-  const { user } = useAuth()
+  const { user, userName } = useAuth()
   const [selectedTaskId, setSelectedTaskId] = useState<string>("")
   const [isRunning, setIsRunning] = useState(false)
   const [startTime, setStartTime] = useState<string>("")
@@ -66,6 +66,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
   const [timezone, setTimezone] = useState<TimezoneKey>('Asia/Tokyo')
   const [isSaving, setIsSaving] = useState(false)
   const [notificationInterval, setNotificationInterval] = useState<number>(3600000) // デフォルト: 1時間
+  const [showNameRequiredDialog, setShowNameRequiredDialog] = useState(false)
 
   // スプレッドシートを更新（行がなければ追記）する共通ヘルパー
   const syncSpreadsheetEntry = async (entryId: string, context: string) => {
@@ -408,6 +409,12 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
   const handleStart = async () => {
     if (!selectedTaskId) return
 
+    // 名前が設定されていない場合はダイアログを表示
+    if (!userName || !userName.trim()) {
+      setShowNameRequiredDialog(true)
+      return
+    }
+
     const nowDate = new Date()
     const now = nowDate.toISOString()
     const newEntry: TimeEntry = {
@@ -644,6 +651,24 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={showNameRequiredDialog} onOpenChange={setShowNameRequiredDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>名前の設定が必要です</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                タイマーを開始するには、設定画面で名前を設定してください。
+              </p>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setShowNameRequiredDialog(false)}>
+                閉じる
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </>
     )
   }
@@ -721,6 +746,24 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
             </Button>
             <Button onClick={handleSaveEntry} disabled={isSaving}>
               {isSaving ? "保存中..." : "保存"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showNameRequiredDialog} onOpenChange={setShowNameRequiredDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>名前の設定が必要です</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              タイマーを開始するには、設定画面で名前を設定してください。
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowNameRequiredDialog(false)}>
+              閉じる
             </Button>
           </DialogFooter>
         </DialogContent>
