@@ -80,7 +80,6 @@ export async function ensureMonthlySheetExists(
           'Team名',
           'Project名',
           'Issue名',
-          'Issue Description',
           'コメント',
           '稼働時間(時間)',
           'Assignee名',
@@ -91,7 +90,7 @@ export async function ensureMonthlySheetExists(
 
       await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `${sheetName}!A1:K1`,
+        range: `${sheetName}!A1:J1`,
         valueInputOption: 'RAW',
         requestBody: {
           values: headerValues,
@@ -113,7 +112,6 @@ export interface TimeEntryData {
   teamName: string | null // Team名
   projectName: string | null // Project名
   issueName: string | null // Issue名
-  issueDescription: string | null // Issue Description
   comment: string // コメント
   workingHours: number // 稼働時間(時間単位)
   assigneeName: string | null // Assignee名
@@ -165,7 +163,6 @@ export async function writeTimeEntryToSheet(
         data.teamName || '',
         data.projectName || '',
         data.issueName || '',
-        data.issueDescription || '',
         data.comment,
         data.workingHours.toFixed(2), // 小数点2桁まで表示
         data.assigneeName || '',
@@ -177,7 +174,7 @@ export async function writeTimeEntryToSheet(
     // シートに追加
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: `${sheetName}!A:K`,
+      range: `${sheetName}!A:J`,
       valueInputOption: 'RAW',
       requestBody: {
         values: rowData,
@@ -215,7 +212,7 @@ export async function updateTimeEntryInSheet(
     // シート内の全データを取得してエントリーIDで検索
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `${sheetName}!A:K`,
+      range: `${sheetName}!A:J`,
     })
 
     const rows = response.data.values
@@ -240,7 +237,6 @@ export async function updateTimeEntryInSheet(
         data.teamName || '',
         data.projectName || '',
         data.issueName || '',
-        data.issueDescription || '',
         data.comment,
         data.workingHours.toFixed(2),
         data.assigneeName || '',
@@ -252,7 +248,7 @@ export async function updateTimeEntryInSheet(
     // 該当行を更新（行番号は1-indexed）
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `${sheetName}!A${rowIndex + 1}:K${rowIndex + 1}`,
+      range: `${sheetName}!A${rowIndex + 1}:J${rowIndex + 1}`,
       valueInputOption: 'RAW',
       requestBody: {
         values: rowData,
@@ -287,7 +283,7 @@ export async function deleteTimeEntryFromSheet(
     console.log('[deleteTimeEntryFromSheet] Fetching sheet data...')
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `${sheetName}!A:K`,
+      range: `${sheetName}!A:J`,
     })
 
     const rows = response.data.values
