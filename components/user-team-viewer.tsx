@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import {
   Loader2, AlertCircle, ChevronDown, ChevronRight, Users, CheckSquare, Filter, Clock, CircleDot
 } from 'lucide-react'
+import { useLanguage } from '@/lib/contexts/LanguageContext'
 
 interface LinearIssue {
   id: string
@@ -54,6 +55,7 @@ interface UserTeamData {
 }
 
 export function UserTeamViewer() {
+  const { t, language } = useLanguage()
   const [users, setUsers] = useState<UserTeamData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -75,7 +77,7 @@ export function UserTeamViewer() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         console.error('[UserTeamViewer] API error:', res.status, errorData)
-        throw new Error(errorData.details || errorData.error || 'ユーザーTeam情報の取得に失敗しました')
+        throw new Error(errorData.details || errorData.error || t("userTeamViewer.fetchFailed"))
       }
       const data = await res.json()
       console.log('[UserTeamViewer] Fetched users data:', data.users)
@@ -92,7 +94,7 @@ export function UserTeamViewer() {
       setUsers(data.users || [])
     } catch (err) {
       console.error('Fetch user teams error:', err)
-      setError(err instanceof Error ? err.message : '不明なエラーが発生しました')
+      setError(err instanceof Error ? err.message : t("error.unknown"))
     } finally {
       setLoading(false)
     }
@@ -131,16 +133,16 @@ export function UserTeamViewer() {
     const diffMins = Math.floor(diffMs / 60000)
     const hours = Math.floor(diffMins / 60)
     const mins = diffMins % 60
-    return hours > 0 ? `${hours}時間${mins}分` : `${mins}分`
+    return hours > 0 ? `${hours}${t("timeEntry.hours")}${mins}${t("timeEntry.minutes")}` : `${mins}${t("timeEntry.minutes")}`
   }
 
   const getPriorityInfo = (priority?: number) => {
     switch (priority) {
-      case 1: return { label: '緊急', color: 'bg-red-500 text-white' }
-      case 2: return { label: '高', color: 'bg-orange-500 text-white' }
-      case 3: return { label: '中', color: 'bg-yellow-500 text-white' }
-      case 4: return { label: '低', color: 'bg-blue-500 text-white' }
-      default: return { label: 'なし', color: 'bg-gray-400 text-white' }
+      case 1: return { label: t('priority.urgent'), color: 'bg-red-500 text-white' }
+      case 2: return { label: t('priority.high'), color: 'bg-orange-500 text-white' }
+      case 3: return { label: t('priority.medium'), color: 'bg-yellow-500 text-white' }
+      case 4: return { label: t('priority.low'), color: 'bg-blue-500 text-white' }
+      default: return { label: t('priority.none'), color: 'bg-gray-400 text-white' }
     }
   }
 
@@ -186,7 +188,7 @@ export function UserTeamViewer() {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
-          <div className="text-sm text-muted-foreground">読み込み中...</div>
+          <div className="text-sm text-muted-foreground">{t("loading.data")}</div>
         </div>
       </div>
     )
@@ -208,7 +210,7 @@ export function UserTeamViewer() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Filter className="w-5 h-5" />
-              <CardTitle className="text-lg">ユーザー選択</CardTitle>
+              <CardTitle className="text-lg">{t("userTeamViewer.userSelection")}</CardTitle>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -216,19 +218,19 @@ export function UserTeamViewer() {
                 size="sm"
                 onClick={() => setShowUserSelector(!showUserSelector)}
               >
-                {showUserSelector ? '閉じる' : '選択'}
+                {showUserSelector ? t("common.close") : t("userTeamViewer.select")}
               </Button>
               {selectedUserIds.size > 0 && (
                 <>
                   <Badge variant="secondary">
-                    {selectedUserIds.size}人選択中
+                    {t("userTeamViewer.usersSelected", { count: selectedUserIds.size })}
                   </Badge>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={clearAllUsers}
                   >
-                    クリア
+                    {t("userTeamViewer.clear")}
                   </Button>
                 </>
               )}
@@ -240,14 +242,14 @@ export function UserTeamViewer() {
             <div className="space-y-3">
               <div className="flex items-center justify-between pb-2 border-b">
                 <div className="text-sm text-muted-foreground">
-                  表示するユーザーを選択してください（未選択の場合は全員表示）
+                  {t("userTeamViewer.selectHint")}
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={selectAllUsers}
                 >
-                  全選択
+                  {t("common.selectAll")}
                 </Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto">
@@ -270,7 +272,7 @@ export function UserTeamViewer() {
                       </div>
                     </div>
                     <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="flex-shrink-0">
-                      {user.role === 'admin' ? '管理者' : 'ユーザー'}
+                      {user.role === 'admin' ? t("admin.roleAdmin") : t("admin.roleUser")}
                     </Badge>
                   </div>
                 ))}
@@ -285,7 +287,7 @@ export function UserTeamViewer() {
         {displayedUsers.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
-              {selectedUserIds.size > 0 ? '選択したユーザーが見つかりません' : 'ユーザーが見つかりません'}
+              {selectedUserIds.size > 0 ? t("userTeamViewer.noSelectedUsers") : t("userTeamViewer.noUsers")}
             </CardContent>
           </Card>
         ) : (
@@ -318,7 +320,7 @@ export function UserTeamViewer() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                        {user.role === 'admin' ? '管理者' : 'ユーザー'}
+                        {user.role === 'admin' ? t("admin.roleAdmin") : t("admin.roleUser")}
                       </Badge>
                       <Badge variant="outline">
                         <Users className="w-3 h-3 mr-1" />
@@ -335,7 +337,7 @@ export function UserTeamViewer() {
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-semibold text-green-900 dark:text-green-100">
-                              作業中
+                              {t("userTeamViewer.working")}
                             </span>
                             {user.currentTask.linear_identifier && (
                               <Badge variant="secondary" className="text-xs font-mono">
@@ -376,7 +378,7 @@ export function UserTeamViewer() {
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-gray-400"></div>
                         <span className="text-sm text-gray-600 dark:text-gray-400">
-                          作業中のタスクなし
+                          {t("userTeamViewer.noCurrentTask")}
                         </span>
                       </div>
                     </div>
@@ -387,7 +389,7 @@ export function UserTeamViewer() {
                   <CardContent>
                     {user.teams.length === 0 ? (
                       <div className="text-sm text-muted-foreground py-4 text-center border-2 border-dashed rounded-lg">
-                        Teamに所属していません
+                        {t("userTeamViewer.noTeam")}
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -434,7 +436,7 @@ export function UserTeamViewer() {
                                 <div className="ml-6 mt-2 space-y-1">
                                   {team.issues.length === 0 ? (
                                     <div className="text-sm text-muted-foreground py-2 text-center border border-dashed rounded">
-                                      Issueがありません
+                                      {t("userTeamViewer.noIssues")}
                                     </div>
                                   ) : (
                                     team.issues.map((issue) => {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/AuthContext'
+import { useLanguage } from '@/lib/contexts/LanguageContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -62,12 +63,13 @@ interface TeamWithIssues {
   issues: LinearIssue[]
 }
 
-const PRIORITY_LABELS: Record<number, string> = {
-  0: 'なし',
-  1: '緊急',
-  2: '高',
-  3: '中',
-  4: '低',
+// Priority labels will be dynamically generated with t() function
+const PRIORITY_KEYS: Record<number, string> = {
+  0: 'priority.none',
+  1: 'priority.urgent',
+  2: 'priority.high',
+  3: 'priority.medium',
+  4: 'priority.low',
 }
 
 const PRIORITY_COLORS: Record<number, string> = {
@@ -78,11 +80,12 @@ const PRIORITY_COLORS: Record<number, string> = {
   4: 'bg-blue-500 text-white',
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  'unstarted': 'unstarted',
-  'started': 'started',
-  'completed': 'completed',
-  'canceled': 'canceled',
+// Status labels will be dynamically generated with t() function
+const STATUS_KEYS: Record<string, string> = {
+  'unstarted': 'status.unstarted',
+  'started': 'status.started',
+  'completed': 'status.completed',
+  'canceled': 'status.canceled',
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -94,6 +97,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function TeamsPage() {
   const { user, loading: authLoading, isAdmin } = useAuth()
+  const { t } = useLanguage()
   const router = useRouter()
   const [teams, setTeams] = useState<TeamWithIssues[]>([])
   const [teamsLoading, setTeamsLoading] = useState(true)
@@ -121,14 +125,14 @@ export default function TeamsPage() {
     try {
       const res = await fetch('/api/admin/teams/issues')
       if (!res.ok) {
-        throw new Error('Team一覧の取得に失敗しました')
+        throw new Error(t("teams.fetchFailed"))
       }
       const data = await res.json()
       console.log('Teams fetched:', data.teams)
       setTeams(data.teams || [])
     } catch (err) {
       console.error('Fetch teams error:', err)
-      setError(err instanceof Error ? err.message : '不明なエラーが発生しました')
+      setError(err instanceof Error ? err.message : t("error.unknown"))
     } finally {
       setTeamsLoading(false)
     }
@@ -165,7 +169,7 @@ export default function TeamsPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
-          <div className="text-sm text-muted-foreground">読み込み中...</div>
+          <div className="text-sm text-muted-foreground">{t("loading.data")}</div>
         </div>
       </div>
     )
@@ -181,12 +185,12 @@ export default function TeamsPage() {
         {/* ヘッダー */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Team管理</h1>
-            <p className="text-muted-foreground">TeamごとのLinear Issueとメンバーを管理</p>
+            <h1 className="text-3xl font-bold mb-2">{t("teams.title")}</h1>
+            <p className="text-muted-foreground">{t("teams.subtitle")}</p>
           </div>
           <Button variant="outline" onClick={() => router.push('/')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            ホームに戻る
+            {t("nav.backToHome")}
           </Button>
         </div>
 
@@ -206,10 +210,10 @@ export default function TeamsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4" />
-                  <CardTitle className="text-base">Team選択</CardTitle>
+                  <CardTitle className="text-base">{t("teams.selectTeam")}</CardTitle>
                   {selectedTeamIds.size > 0 && (
                     <Badge variant="secondary">
-                      {selectedTeamIds.size}個選択中
+                      {t("teams.selectedCount", { count: selectedTeamIds.size })}
                     </Badge>
                   )}
                 </div>
@@ -218,7 +222,7 @@ export default function TeamsPage() {
                   size="sm"
                   onClick={() => setShowTeamSelector(!showTeamSelector)}
                 >
-                  {showTeamSelector ? '閉じる' : '開く'}
+                  {showTeamSelector ? t("common.close") : t("common.open")}
                 </Button>
               </div>
             </CardHeader>
@@ -231,14 +235,14 @@ export default function TeamsPage() {
                       size="sm"
                       onClick={selectAllTeams}
                     >
-                      すべて選択
+                      {t("common.selectAll")}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={deselectAllTeams}
                     >
-                      選択解除
+                      {t("common.deselectAll")}
                     </Button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -278,13 +282,13 @@ export default function TeamsPage() {
           {teams.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                Teamがありません。Webhook経由でLinearから同期されます。
+                {t("teams.noTeams")}
               </CardContent>
             </Card>
           ) : filteredTeams.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                選択されたTeamがありません。上記のフィルターからTeamを選択してください。
+                {t("teams.noTeamsSelected")}
               </CardContent>
             </Card>
           ) : (
@@ -321,10 +325,10 @@ export default function TeamsPage() {
                           <div className="flex items-center gap-2">
                             <Badge variant="outline">
                               <Users className="w-3 h-3 mr-1" />
-                              {team.members.length}名
+                              {t("teams.memberCount", { count: team.members.length })}
                             </Badge>
                             <Badge variant="outline">
-                              {team.issues.length}件のIssue
+                              {t("teams.issueCount", { count: team.issues.length })}
                             </Badge>
                           </div>
                         </div>
@@ -335,7 +339,7 @@ export default function TeamsPage() {
                       <CardContent className="pt-4">
                         {team.members.length === 0 ? (
                           <div className="text-sm text-muted-foreground py-8 text-center border-2 border-dashed rounded-lg">
-                            このTeamにアサインされているIssueを持つメンバーがいません
+                            {t("teams.noMembersWithIssues")}
                           </div>
                         ) : (
                           <Accordion type="multiple" className="space-y-3">
@@ -359,12 +363,12 @@ export default function TeamsPage() {
                                       <Badge
                                         variant={member.role === 'admin' ? 'default' : 'secondary'}
                                       >
-                                        {member.role === 'admin' ? '管理者' : 'ユーザー'}
+                                        {member.role === 'admin' ? t("admin.roleAdmin") : t("admin.roleUser")}
                                       </Badge>
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <Badge variant="outline">
-                                        {member.issues.length}件のIssue
+                                        {t("teams.issueCount", { count: member.issues.length })}
                                       </Badge>
                                     </div>
                                   </div>
@@ -374,10 +378,10 @@ export default function TeamsPage() {
                                     <Table>
                                       <TableHeader>
                                         <TableRow>
-                                          <TableHead className="w-[120px]">Issue ID</TableHead>
-                                          <TableHead>タイトル</TableHead>
-                                          <TableHead className="w-[100px]">優先度</TableHead>
-                                          <TableHead className="w-[100px]">ステータス</TableHead>
+                                          <TableHead className="w-[120px]">{t("teams.issueId")}</TableHead>
+                                          <TableHead>{t("teams.issueTitle")}</TableHead>
+                                          <TableHead className="w-[100px]">{t("teams.issuePriority")}</TableHead>
+                                          <TableHead className="w-[100px]">{t("teams.issueStatus")}</TableHead>
                                           <TableHead className="w-[50px]"></TableHead>
                                         </TableRow>
                                       </TableHeader>
@@ -403,14 +407,14 @@ export default function TeamsPage() {
                                               <Badge
                                                 className={PRIORITY_COLORS[issue.priority || 0]}
                                               >
-                                                {PRIORITY_LABELS[issue.priority || 0]}
+                                                {t(PRIORITY_KEYS[issue.priority || 0])}
                                               </Badge>
                                             </TableCell>
                                             <TableCell>
                                               <Badge
                                                 className={STATUS_COLORS[issue.linear_state_type] || STATUS_COLORS.unstarted}
                                               >
-                                                {STATUS_LABELS[issue.linear_state_type] || issue.linear_state_type}
+                                                {t(STATUS_KEYS[issue.linear_state_type] || `status.${issue.linear_state_type}`)}
                                               </Badge>
                                             </TableCell>
                                             <TableCell>

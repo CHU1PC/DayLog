@@ -3,11 +3,13 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/contexts/AuthContext"
+import { useLanguage } from "@/lib/contexts/LanguageContext"
 import { Button } from "@/components/ui/button"
 import { Clock, Mail } from "lucide-react"
 
 export default function PendingApprovalPage() {
   const { user, isApproved, loading, signOut, checkApprovalStatus } = useAuth()
+  const { t } = useLanguage()
   const router = useRouter()
 
   useEffect(() => {
@@ -39,8 +41,8 @@ export default function PendingApprovalPage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="text-lg font-semibold mb-2">認証確認中...</div>
-          <div className="text-sm text-muted-foreground">お待ちください</div>
+          <div className="text-lg font-semibold mb-2">{t("loading.auth")}</div>
+          <div className="text-sm text-muted-foreground">{t("loading.wait")}</div>
         </div>
       </div>
     )
@@ -51,7 +53,7 @@ export default function PendingApprovalPage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="text-lg font-semibold mb-2">リダイレクト中...</div>
+          <div className="text-lg font-semibold mb-2">{t("loading.redirect")}</div>
         </div>
       </div>
     )
@@ -66,9 +68,9 @@ export default function PendingApprovalPage() {
               <Clock className="w-8 h-8 text-yellow-500" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold mb-2">承認待ち</h1>
+          <h1 className="text-3xl font-bold mb-2">{t("pending.title")}</h1>
           <p className="text-muted-foreground">
-            アカウントは正常に作成されましたが、管理者による承認が必要です
+            {t("pending.description")}
           </p>
         </div>
 
@@ -76,36 +78,36 @@ export default function PendingApprovalPage() {
           <div className="flex items-start gap-3">
             <Mail className="w-5 h-5 text-muted-foreground mt-0.5" />
             <div>
-              <h2 className="font-semibold mb-1">登録メールアドレス</h2>
+              <h2 className="font-semibold mb-1">{t("pending.email")}</h2>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
             </div>
           </div>
 
           <div className="border-t border-border pt-4">
-            <h3 className="font-semibold mb-3">次のステップ</h3>
+            <h3 className="font-semibold mb-3">{t("pending.nextSteps")}</h3>
             <ol className="text-sm text-muted-foreground space-y-3">
               <li className="flex gap-3">
                 <span className="font-semibold text-foreground">1.</span>
-                <span>管理者にアカウントを登録したことを知らせてください</span>
+                <span>{t("pending.step1")}</span>
               </li>
               <li className="flex gap-3">
                 <span className="font-semibold text-foreground">2.</span>
-                <span>管理者があなたのアカウントを承認しましたら、再度ログインしてください</span>
+                <span>{t("pending.step2")}</span>
               </li>
             </ol>
           </div>
 
           <div className="border-t border-border pt-4 space-y-2">
             <Button onClick={handleCheckStatus} className="w-full" variant="default">
-              承認状態を確認
+              {t("pending.checkStatus")}
             </Button>
             <Button onClick={handleLogout} className="w-full" variant="outline">
-              ログアウト
+              {t("nav.logout")}
             </Button>
           </div>
 
           <div className="text-xs text-center text-muted-foreground">
-            問題がある場合は、管理者にお問い合わせください
+            {t("pending.contactAdmin")}
           </div>
         </div>
       </div>

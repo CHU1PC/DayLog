@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { Task } from "@/lib/types"
 import { AlertCircle, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useLanguage } from "@/lib/contexts/LanguageContext"
 
 interface UnassignedTasksProps {
   tasks: Task[]
@@ -14,6 +15,7 @@ interface UnassignedTasksProps {
 }
 
 export function UnassignedTasks({ tasks, onAssignTask }: UnassignedTasksProps) {
+  const { t } = useLanguage()
   const [assigningTaskId, setAssigningTaskId] = useState<string | null>(null)
 
   // assignee_emailが空のタスクのみをフィルタリング
@@ -36,8 +38,8 @@ export function UnassignedTasks({ tasks, onAssignTask }: UnassignedTasksProps) {
     const grouped = new Map<string, Task[]>()
 
     unassignedTasks.forEach(task => {
-      const teamKey = task.linear_identifier?.split('-')[0] || 'その他'
-      const teamName = task.linear_team_id ? `Team: ${teamKey}` : 'その他'
+      const teamKey = task.linear_identifier?.split('-')[0] || t("unassigned.other")
+      const teamName = task.linear_team_id ? `Team: ${teamKey}` : t("unassigned.other")
 
       if (!grouped.has(teamName)) {
         grouped.set(teamName, [])
@@ -54,35 +56,35 @@ export function UnassignedTasks({ tasks, onAssignTask }: UnassignedTasksProps) {
         return priorityA - priorityB
       })
     }))
-  }, [unassignedTasks])
+  }, [unassignedTasks, t])
 
   const getPriorityBadge = (priority: number | null | undefined) => {
-    if (!priority) return <Badge variant="outline">未設定</Badge>
+    if (!priority) return <Badge variant="outline">{t("unassigned.notSet")}</Badge>
 
-    const priorityMap: Record<number, { label: string; variant: "destructive" | "default" | "secondary" | "outline" }> = {
-      1: { label: "緊急", variant: "destructive" },
-      2: { label: "高", variant: "default" },
-      3: { label: "中", variant: "secondary" },
-      4: { label: "低", variant: "outline" },
+    const priorityMap: Record<number, { labelKey: string; variant: "destructive" | "default" | "secondary" | "outline" }> = {
+      1: { labelKey: "priority.urgent", variant: "destructive" },
+      2: { labelKey: "priority.high", variant: "default" },
+      3: { labelKey: "priority.medium", variant: "secondary" },
+      4: { labelKey: "priority.low", variant: "outline" },
     }
 
-    const config = priorityMap[priority] || { label: "不明", variant: "outline" }
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    const config = priorityMap[priority] || { labelKey: "unassigned.unknown", variant: "outline" }
+    return <Badge variant={config.variant}>{t(config.labelKey)}</Badge>
   }
 
   const getStateBadge = (stateType: string | null | undefined) => {
     if (!stateType) return null
 
-    const stateMap: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-      backlog: { label: "バックログ", variant: "outline" },
-      unstarted: { label: "未着手", variant: "secondary" },
-      started: { label: "進行中", variant: "default" },
-      completed: { label: "完了", variant: "outline" },
-      canceled: { label: "キャンセル", variant: "outline" },
+    const stateMap: Record<string, { labelKey: string; variant: "default" | "secondary" | "outline" }> = {
+      backlog: { labelKey: "unassigned.backlog", variant: "outline" },
+      unstarted: { labelKey: "unassigned.unstarted", variant: "secondary" },
+      started: { labelKey: "unassigned.inProgress", variant: "default" },
+      completed: { labelKey: "unassigned.completed", variant: "outline" },
+      canceled: { labelKey: "unassigned.canceled", variant: "outline" },
     }
 
-    const config = stateMap[stateType] || { label: stateType, variant: "outline" }
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    const config = stateMap[stateType] || { labelKey: stateType, variant: "outline" }
+    return <Badge variant={config.variant}>{t(config.labelKey)}</Badge>
   }
 
   if (unassignedTasks.length === 0) {
@@ -91,14 +93,14 @@ export function UnassignedTasks({ tasks, onAssignTask }: UnassignedTasksProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            未アサインタスク
+            {t("unassigned.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              現在、未アサインのタスクはありません。
+              {t("unassigned.noUnassigned")}
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -112,14 +114,14 @@ export function UnassignedTasks({ tasks, onAssignTask }: UnassignedTasksProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            未アサインタスク ({unassignedTasks.length}件)
+            {t("unassigned.titleCount", { count: unassignedTasks.length })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              誰にもアサインされていないタスクの一覧です。必要に応じてメンバーにアサインしてください。
+              {t("unassigned.description")}
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -163,7 +165,7 @@ export function UnassignedTasks({ tasks, onAssignTask }: UnassignedTasksProps) {
                           rel="noopener noreferrer"
                           className="text-xs text-primary hover:underline"
                         >
-                          Linearで開く →
+                          {t("taskMgmt.openInLinear")} →
                         </a>
                       )}
                     </div>
@@ -179,7 +181,7 @@ export function UnassignedTasks({ tasks, onAssignTask }: UnassignedTasksProps) {
                         console.log('Assign task:', task.id)
                       }}
                     >
-                      アサイン
+                      {t("unassigned.assign")}
                     </Button>
                   )}
                 </div>

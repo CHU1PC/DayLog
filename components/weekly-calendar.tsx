@@ -7,6 +7,7 @@ import type { Task, TimeEntry } from "@/lib/types"
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react"
 import { TimeEntryDialog } from "@/components/time-entry-dialog"
 import { ManualTimeEntryDialog } from "@/components/manual-time-entry-dialog"
+import { useLanguage } from "@/lib/contexts/LanguageContext"
 
 interface WeeklyCalendarProps {
   tasks: Task[]
@@ -17,6 +18,7 @@ interface WeeklyCalendarProps {
 }
 
 export function WeeklyCalendar({ tasks, timeEntries, onUpdateEntry, onDeleteEntry, onAddEntry }: WeeklyCalendarProps) {
+  const { t, language } = useLanguage()
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const now = new Date()
     const day = now.getDay()
@@ -178,6 +180,23 @@ export function WeeklyCalendar({ tasks, timeEntries, onUpdateEntry, onDeleteEntr
 
   const hours = Array.from({ length: 24 }, (_, i) => i)
 
+  const weekDayLabels = [
+    t("calendar.mon"),
+    t("calendar.tue"),
+    t("calendar.wed"),
+    t("calendar.thu"),
+    t("calendar.fri"),
+    t("calendar.sat"),
+    t("calendar.sun"),
+  ]
+
+  const formatDateRange = () => {
+    if (language === "en") {
+      return `${currentWeekStart.getMonth() + 1}/${currentWeekStart.getDate()}/${currentWeekStart.getFullYear()} - ${weekDays[6].getMonth() + 1}/${weekDays[6].getDate()}/${weekDays[6].getFullYear()}`
+    }
+    return `${currentWeekStart.getFullYear()}年 ${currentWeekStart.getMonth() + 1}月 ${currentWeekStart.getDate()}日 - ${weekDays[6].getMonth() + 1}月 ${weekDays[6].getDate()}日`
+  }
+
   return (
     <div className="space-y-4">
       <Card className="p-2 sm:p-4">
@@ -187,8 +206,7 @@ export function WeeklyCalendar({ tasks, timeEntries, onUpdateEntry, onDeleteEntr
           </Button>
           <div className="flex items-center gap-4">
             <h2 className="text-sm sm:text-lg font-semibold">
-              {currentWeekStart.getFullYear()}年 {currentWeekStart.getMonth() + 1}月 {currentWeekStart.getDate()}日 -{" "}
-              {weekDays[6].getMonth() + 1}月 {weekDays[6].getDate()}日
+              {formatDateRange()}
             </h2>
             <Button
               variant="ghost"
@@ -197,7 +215,7 @@ export function WeeklyCalendar({ tasks, timeEntries, onUpdateEntry, onDeleteEntr
               className="h-6 px-2 text-xs opacity-30 hover:opacity-60 transition-opacity"
             >
               <Plus className="w-3 h-3 mr-1" />
-              手動追加
+              {t("calendar.manualAdd")}
             </Button>
           </div>
           <Button variant="outline" size="icon" onClick={goToNextWeek} className="h-8 w-8 sm:h-10 sm:w-10">
@@ -212,7 +230,7 @@ export function WeeklyCalendar({ tasks, timeEntries, onUpdateEntry, onDeleteEntr
           {weekDays.map((day, index) => (
             <div key={index} className="p-3 text-center border-r border-border last:border-r-0">
               <div className="text-xs text-muted-foreground mb-1">
-                {["月", "火", "水", "木", "金", "土", "日"][index]}
+                {weekDayLabels[index]}
               </div>
               <div className="text-sm font-medium">
                 {day.getMonth() + 1}/{day.getDate()}
@@ -267,7 +285,7 @@ export function WeeklyCalendar({ tasks, timeEntries, onUpdateEntry, onDeleteEntr
                         </span>
                         <span>-</span>
                         <span className="bg-white/20 px-1.5 py-0.5 rounded text-[11px]">
-                          {entry.endTime ? formatTime(entry.endTime) : "進行中"}
+                          {entry.endTime ? formatTime(entry.endTime) : t("calendar.inProgress")}
                         </span>
                       </div>
                     </div>

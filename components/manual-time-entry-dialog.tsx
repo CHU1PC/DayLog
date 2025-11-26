@@ -9,6 +9,7 @@ import type { Task, TimeEntry } from "@/lib/types"
 import { useState, useEffect, useMemo } from "react"
 import { generateId } from "@/lib/utils"
 import { useAuth } from "@/lib/contexts/AuthContext"
+import { useLanguage } from "@/lib/contexts/LanguageContext"
 
 interface ManualTimeEntryDialogProps {
   open: boolean
@@ -19,6 +20,7 @@ interface ManualTimeEntryDialogProps {
 
 export function ManualTimeEntryDialog({ open, onOpenChange, tasks, onAdd }: ManualTimeEntryDialogProps) {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [selectedTaskId, setSelectedTaskId] = useState("")
   const [comment, setComment] = useState("")
   const [startDate, setStartDate] = useState("")
@@ -120,11 +122,11 @@ export function ManualTimeEntryDialog({ open, onOpenChange, tasks, onAdd }: Manu
 
       // 終了日時が現在時刻より未来の場合はエラー
       if (endDateTime > now) {
-        setTimeError("終了日時は現在時刻より未来に設定できません")
+        setTimeError(t("timeEntry.endTimeError"))
       } else if (startDateTime > now) {
-        setTimeError("開始日時は現在時刻より未来に設定できません")
+        setTimeError(t("timeEntry.startTimeError"))
       } else if (startDateTime >= endDateTime) {
-        setTimeError("終了日時は開始日時より後に設定してください")
+        setTimeError(t("timeEntry.timeOrderError"))
       } else {
         setTimeError("")
       }
@@ -134,12 +136,12 @@ export function ManualTimeEntryDialog({ open, onOpenChange, tasks, onAdd }: Manu
   const handleSave = () => {
     // バリデーション
     if (!selectedTaskId) {
-      setTimeError("タスクを選択してください")
+      setTimeError(t("timeEntry.selectTask"))
       return
     }
 
     if (!startTime || !endTime) {
-      setTimeError("開始時刻と終了時刻を入力してください")
+      setTimeError(t("timeEntry.enterTime"))
       return
     }
 
@@ -199,15 +201,15 @@ export function ManualTimeEntryDialog({ open, onOpenChange, tasks, onAdd }: Manu
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>手動で時間エントリを追加</DialogTitle>
+          <DialogTitle>{t("timeEntry.manualAddTitle")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">タスク</label>
+            <label className="block text-sm font-medium mb-2">{t("timeEntry.task")}</label>
             <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
               <SelectTrigger>
-                <SelectValue placeholder="タスクを選択" />
+                <SelectValue placeholder={t("timer.selectTask")} />
               </SelectTrigger>
               <SelectContent className="max-h-[400px]">
                 {sortedGroupedTasks.map(([teamName, teamTasks]) => (
@@ -231,22 +233,22 @@ export function ManualTimeEntryDialog({ open, onOpenChange, tasks, onAdd }: Manu
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">開始日</label>
+              <label className="block text-sm font-medium mb-2">{t("timeEntry.startDate")}</label>
               <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">終了日</label>
+              <label className="block text-sm font-medium mb-2">{t("timeEntry.endDate")}</label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">開始時刻</label>
+              <label className="block text-sm font-medium mb-2">{t("timeEntry.startTime")}</label>
               <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">終了時刻</label>
+              <label className="block text-sm font-medium mb-2">{t("timeEntry.endTime")}</label>
               <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
             </div>
           </div>
@@ -258,17 +260,17 @@ export function ManualTimeEntryDialog({ open, onOpenChange, tasks, onAdd }: Manu
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-2">コメント</label>
-            <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={4} placeholder="作業内容を入力してください" />
+            <label className="block text-sm font-medium mb-2">{t("timeEntry.comment")}</label>
+            <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={4} placeholder={t("timeEntry.commentPlaceholder")} />
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            キャンセル
+            {t("common.cancel")}
           </Button>
           <Button onClick={handleSave} disabled={!!timeError || !selectedTaskId}>
-            追加
+            {t("timeEntry.add")}
           </Button>
         </DialogFooter>
       </DialogContent>

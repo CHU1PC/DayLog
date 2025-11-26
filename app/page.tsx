@@ -14,6 +14,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import type { TimeEntry } from "@/lib/types"
 import { useSupabase } from "@/lib/hooks/useSupabase"
 import { useAuth } from "@/lib/contexts/AuthContext"
+import { useLanguage } from "@/lib/contexts/LanguageContext"
 import { LogOut, Settings, Menu } from "lucide-react"
 
 export default function HomePage() {
@@ -21,6 +22,7 @@ export default function HomePage() {
   const [showSettings, setShowSettings] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, loading: authLoading, isApproved, isAdmin, userName, signOut } = useAuth()
+  const { t } = useLanguage()
   const router = useRouter()
 
   useEffect(() => {
@@ -123,8 +125,8 @@ export default function HomePage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="text-lg font-semibold mb-2">認証確認中...</div>
-          <div className="text-sm text-muted-foreground">お待ちください</div>
+          <div className="text-lg font-semibold mb-2">{t("loading.auth")}</div>
+          <div className="text-sm text-muted-foreground">{t("loading.wait")}</div>
         </div>
       </div>
     )
@@ -135,8 +137,8 @@ export default function HomePage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="text-lg font-semibold mb-2">リダイレクト中...</div>
-          <div className="text-sm text-muted-foreground">承認待ちページへ移動します</div>
+          <div className="text-lg font-semibold mb-2">{t("loading.redirect")}</div>
+          <div className="text-sm text-muted-foreground">{t("loading.redirectPending")}</div>
         </div>
       </div>
     )
@@ -146,8 +148,8 @@ export default function HomePage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="text-lg font-semibold mb-2">読み込み中...</div>
-          <div className="text-sm text-muted-foreground">データを取得しています</div>
+          <div className="text-lg font-semibold mb-2">{t("loading.data")}</div>
+          <div className="text-sm text-muted-foreground">{t("loading.fetchingData")}</div>
         </div>
       </div>
     )
@@ -157,10 +159,10 @@ export default function HomePage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="text-lg font-semibold mb-2 text-destructive">エラーが発生しました</div>
+          <div className="text-lg font-semibold mb-2 text-destructive">{t("error.occurred")}</div>
           <div className="text-sm text-muted-foreground">{error}</div>
           <div className="mt-4 text-xs text-muted-foreground">
-            環境変数が正しく設定されているか確認してください
+            {t("error.checkEnv")}
           </div>
         </div>
       </div>
@@ -184,7 +186,7 @@ export default function HomePage() {
                 </SheetTrigger>
                 <SheetContent side="left" className="w-64">
                   <SheetHeader>
-                    <SheetTitle>メニュー</SheetTitle>
+                    <SheetTitle>{t("nav.menu")}</SheetTitle>
                   </SheetHeader>
                   <nav className="flex flex-col gap-2 mt-4">
                     <Button
@@ -192,14 +194,14 @@ export default function HomePage() {
                       onClick={() => { setView("calendar"); setMobileMenuOpen(false); }}
                       className="justify-start"
                     >
-                      カレンダー
+                      {t("nav.calendar")}
                     </Button>
                     <Button
                       variant={view === "tasks" ? "default" : "ghost"}
                       onClick={() => { setView("tasks"); setMobileMenuOpen(false); }}
                       className="justify-start"
                     >
-                      タスク管理
+                      {t("nav.taskManagement")}
                     </Button>
                     {isAdmin && (
                       <>
@@ -208,21 +210,21 @@ export default function HomePage() {
                           onClick={() => { setView("unassigned"); setMobileMenuOpen(false); }}
                           className="justify-start"
                         >
-                          未アサインタスク
+                          {t("nav.unassignedTasks")}
                         </Button>
                         <Button
                           variant={view === "teams" ? "default" : "ghost"}
                           onClick={() => { setView("teams"); setMobileMenuOpen(false); }}
                           className="justify-start"
                         >
-                          Team管理
+                          {t("nav.teamManagement")}
                         </Button>
                         <Button
                           variant={view === "user-teams" ? "default" : "ghost"}
                           onClick={() => { setView("user-teams"); setMobileMenuOpen(false); }}
                           className="justify-start"
                         >
-                          ユーザーTeam表示
+                          {t("nav.userTeamView")}
                         </Button>
                       </>
                     )}
@@ -234,21 +236,21 @@ export default function HomePage() {
             {/* デスクトップ用ナビゲーション (md以上で表示) */}
             <div className="hidden md:flex items-center gap-1 sm:gap-2">
               <Button variant={view === "calendar" ? "default" : "ghost"} onClick={() => setView("calendar")} size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
-                カレンダー
+                {t("nav.calendar")}
               </Button>
               <Button variant={view === "tasks" ? "default" : "ghost"} onClick={() => setView("tasks")} size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
-                タスク管理
+                {t("nav.taskManagement")}
               </Button>
               {isAdmin && (
                 <>
                   <Button variant={view === "unassigned" ? "default" : "ghost"} onClick={() => setView("unassigned")} size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
-                    未アサインタスク
+                    {t("nav.unassignedTasks")}
                   </Button>
                   <Button variant={view === "teams" ? "default" : "ghost"} onClick={() => setView("teams")} size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
-                    Team管理
+                    {t("nav.teamManagement")}
                   </Button>
                   <Button variant={view === "user-teams" ? "default" : "ghost"} onClick={() => setView("user-teams")} size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
-                    ユーザーTeam表示
+                    {t("nav.userTeamView")}
                   </Button>
                 </>
               )}
@@ -267,7 +269,7 @@ export default function HomePage() {
               {isAdmin && (
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-500/10 border border-blue-500/20">
                   <div className="w-2 h-2 rounded-full bg-blue-500" />
-                  <span className="hidden sm:inline text-xs font-semibold text-blue-500">管理者</span>
+                  <span className="hidden sm:inline text-xs font-semibold text-blue-500">{t("status.admin")}</span>
                 </div>
               )}
 
@@ -279,24 +281,24 @@ export default function HomePage() {
                   'bg-gray-400 animate-pulse'
                 }`} />
                 <span className="hidden md:inline text-muted-foreground">
-                  {connectionStatus === 'connected' ? 'Supabase接続済' :
-                   connectionStatus === 'disconnected' ? 'ローカルモード' :
-                   '接続確認中...'}
+                  {connectionStatus === 'connected' ? t("status.connected") :
+                   connectionStatus === 'disconnected' ? t("status.disconnected") :
+                   t("status.connecting")}
                 </span>
               </div>
               {isAdmin && (
                 <Button variant="outline" onClick={() => router.push('/admin')} size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
-                  <span className="hidden sm:inline">管理画面</span>
-                  <span className="sm:hidden">管理</span>
+                  <span className="hidden sm:inline">{t("nav.admin")}</span>
+                  <span className="sm:hidden">{t("nav.admin")}</span>
                 </Button>
               )}
-              <Button variant="ghost" onClick={() => setShowSettings(true)} size="sm" className="px-2 sm:px-3" title="設定">
+              <Button variant="ghost" onClick={() => setShowSettings(true)} size="sm" className="px-2 sm:px-3" title={t("nav.settings")}>
                 <Settings className="w-4 h-4" />
-                <span className="hidden md:inline ml-1">設定</span>
+                <span className="hidden md:inline ml-1">{t("nav.settings")}</span>
               </Button>
-              <Button variant="ghost" onClick={handleLogout} size="sm" className="px-2 sm:px-3" title="ログアウト">
+              <Button variant="ghost" onClick={handleLogout} size="sm" className="px-2 sm:px-3" title={t("nav.logout")}>
                 <LogOut className="w-4 h-4" />
-                <span className="hidden md:inline ml-1">ログアウト</span>
+                <span className="hidden md:inline ml-1">{t("nav.logout")}</span>
               </Button>
             </div>
           </div>
