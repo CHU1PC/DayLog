@@ -328,6 +328,17 @@ const translations: Record<Language, Record<string, string>> = {
     "admin.statusApproved": "承認済み",
     "admin.roleAdmin": "管理者",
     "admin.roleUser": "ユーザー",
+
+    // Timezones
+    "timezone.Asia/Tokyo": "日本時間 (JST)",
+    "timezone.America/New_York": "アメリカ東部時間 (EST/EDT)",
+    "timezone.America/Los_Angeles": "アメリカ太平洋時間 (PST/PDT)",
+    "timezone.Europe/London": "イギリス時間 (GMT/BST)",
+    "timezone.Asia/Shanghai": "中国標準時 (CST)",
+    "timezone.Asia/Kolkata": "インド標準時 (IST)",
+    "timezone.Europe/Paris": "中央ヨーロッパ時間 (CET/CEST)",
+    "timezone.Australia/Sydney": "オーストラリア東部時間 (AEST/AEDT)",
+    "timezone.Pacific/Auckland": "ニュージーランド時間 (NZST/NZDT)",
   },
   en: {
     // Navigation
@@ -401,8 +412,8 @@ const translations: Record<Language, Record<string, string>> = {
     "timeEntry.startTime": "Start Time",
     "timeEntry.endTime": "End Time",
     "timeEntry.totalTime": "Total Time",
-    "timeEntry.hours": "hours",
-    "timeEntry.minutes": "minutes",
+    "timeEntry.hours": "h ",
+    "timeEntry.minutes": "min",
     "timeEntry.comment": "Comment",
     "timeEntry.saveShortcut": "⌘/Ctrl + Enter to save",
     "timeEntry.delete": "Delete",
@@ -646,6 +657,17 @@ const translations: Record<Language, Record<string, string>> = {
     "admin.statusApproved": "Approved",
     "admin.roleAdmin": "Admin",
     "admin.roleUser": "User",
+
+    // Timezones
+    "timezone.Asia/Tokyo": "Japan Time (JST)",
+    "timezone.America/New_York": "US Eastern Time (EST/EDT)",
+    "timezone.America/Los_Angeles": "US Pacific Time (PST/PDT)",
+    "timezone.Europe/London": "UK Time (GMT/BST)",
+    "timezone.Asia/Shanghai": "China Standard Time (CST)",
+    "timezone.Asia/Kolkata": "India Standard Time (IST)",
+    "timezone.Europe/Paris": "Central European Time (CET/CEST)",
+    "timezone.Australia/Sydney": "Australia Eastern Time (AEST/AEDT)",
+    "timezone.Pacific/Auckland": "New Zealand Time (NZST/NZDT)",
   },
 }
 
