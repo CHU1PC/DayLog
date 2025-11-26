@@ -27,7 +27,8 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
   const [timeError, setTimeError] = useState("")
 
   useEffect(() => {
-    if (entry) {
+    // ダイアログが開かれたときに状態をリセット
+    if (open && entry) {
       setComment(entry.comment)
       const start = new Date(entry.startTime)
       // ローカルタイムゾーンの日付を取得
@@ -48,7 +49,7 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
       }
       setTimeError("")
     }
-  }, [entry])
+  }, [open, entry])
 
   // 時刻バリデーション
   useEffect(() => {
