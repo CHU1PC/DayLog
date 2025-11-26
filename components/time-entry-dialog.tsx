@@ -63,11 +63,13 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
       endDateTime.setHours(endHour, endMinute, 0, 0)
 
       const now = new Date()
+      // 1分の余裕を持たせる（編集中に現在時刻が過ぎてしまう場合を考慮）
+      const nowWithBuffer = new Date(now.getTime() + 60000)
 
-      // 終了日時が現在時刻より未来の場合はエラー
-      if (endDateTime > now) {
+      // 終了日時が現在時刻より未来の場合はエラー（1分の余裕あり）
+      if (endDateTime > nowWithBuffer) {
         setTimeError("終了日時は現在時刻より未来に設定できません")
-      } else if (startDateTime > now) {
+      } else if (startDateTime > nowWithBuffer) {
         setTimeError("開始日時は現在時刻より未来に設定できません")
       } else if (startDateTime >= endDateTime) {
         setTimeError("終了日時は開始日時より後に設定してください")
