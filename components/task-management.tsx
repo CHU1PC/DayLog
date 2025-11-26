@@ -159,9 +159,12 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       const entryDate = new Date(entry.startTime)
 
       // 今日
-      if (entry.date === today) {
+      const entryDateStr = entryDate.toISOString().split("T")[0]
+      if (entryDateStr === today) {
         todaySeconds += duration
-      } else if (entry.date === yesterday) {
+      }
+      // 昨日（今日とは別に判定）
+      if (entryDateStr === yesterday) {
         yesterdaySeconds += duration
       }
 
