@@ -22,15 +22,15 @@ import { useLanguage } from "@/lib/contexts/LanguageContext"
 
 // タイムゾーン定義
 const TIMEZONES = {
-  'Asia/Tokyo': { name: '日本時間 (JST)', offset: 9 },
-  'America/New_York': { name: 'アメリカ東部時間 (EST/EDT)', offset: -5 }, // 冬時間、夏時間は-4
-  'America/Los_Angeles': { name: 'アメリカ太平洋時間 (PST/PDT)', offset: -8 }, // 冬時間、夏時間は-7
-  'Europe/London': { name: 'イギリス時間 (GMT/BST)', offset: 0 }, // 冬時間、夏時間は+1
-  'Asia/Shanghai': { name: '中国標準時 (CST)', offset: 8 },
-  'Asia/Kolkata': { name: 'インド標準時 (IST)', offset: 5.5 },
-  'Europe/Paris': { name: '中央ヨーロッパ時間 (CET/CEST)', offset: 1 }, // 冬時間、夏時間は+2
-  'Australia/Sydney': { name: 'オーストラリア東部時間 (AEST/AEDT)', offset: 10 }, // 冬時間、夏時間は+11
-  'Pacific/Auckland': { name: 'ニュージーランド時間 (NZST/NZDT)', offset: 12 }, // 冬時間、夏時間は+13
+  'Asia/Tokyo': { offset: 9 },
+  'America/New_York': { offset: -5 }, // 冬時間、夏時間は-4
+  'America/Los_Angeles': { offset: -8 }, // 冬時間、夏時間は-7
+  'Europe/London': { offset: 0 }, // 冬時間、夏時間は+1
+  'Asia/Shanghai': { offset: 8 },
+  'Asia/Kolkata': { offset: 5.5 },
+  'Europe/Paris': { offset: 1 }, // 冬時間、夏時間は+2
+  'Australia/Sydney': { offset: 10 }, // 冬時間、夏時間は+11
+  'Pacific/Auckland': { offset: 12 }, // 冬時間、夏時間は+13
 } as const
 
 type TimezoneKey = keyof typeof TIMEZONES
@@ -554,7 +554,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
                   <SelectContent>
                     {(Object.keys(TIMEZONES) as TimezoneKey[]).map((tz) => (
                       <SelectItem key={tz} value={tz} className="text-xs">
-                        {TIMEZONES[tz].name}
+                        {t(`timezone.${tz}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
