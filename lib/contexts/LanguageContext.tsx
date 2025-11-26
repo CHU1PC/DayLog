@@ -245,6 +245,14 @@ const translations: Record<Language, Record<string, string>> = {
     "taskMgmt.today": "今日",
     "taskMgmt.yesterday": "昨日",
     "taskMgmt.other": "その他",
+    "taskMgmt.createTeamTask": "個人タスク作成",
+    "taskMgmt.createTeamTaskTitle": "チームタスクを作成",
+    "taskMgmt.createTeamTaskDesc": "選択したチームのメンバーが使用できるタスクを作成します",
+    "taskMgmt.selectTeamLabel": "チーム選択",
+    "taskMgmt.selectTeamPlaceholder": "チームを選択してください",
+    "taskMgmt.selectTeam": "チームを選択してください",
+    "taskMgmt.teamLabelDesc": "タスク選択時にこのラベルでグループ化されます（⌘/Ctrl + Enter で作成）",
+    "taskMgmt.noTeamsAvailable": "所属しているチームがありません。管理者にチームへの追加を依頼してください。",
 
     // User team viewer
     "userTeam.userSelection": "ユーザー選択",
@@ -574,6 +582,14 @@ const translations: Record<Language, Record<string, string>> = {
     "taskMgmt.today": "Today",
     "taskMgmt.yesterday": "Yesterday",
     "taskMgmt.other": "Other",
+    "taskMgmt.createTeamTask": "Create Team Task",
+    "taskMgmt.createTeamTaskTitle": "Create Team Task",
+    "taskMgmt.createTeamTaskDesc": "Create a task that team members can use",
+    "taskMgmt.selectTeamLabel": "Select Team",
+    "taskMgmt.selectTeamPlaceholder": "Select a team",
+    "taskMgmt.selectTeam": "Please select a team",
+    "taskMgmt.teamLabelDesc": "Tasks will be grouped by this label (⌘/Ctrl + Enter to create)",
+    "taskMgmt.noTeamsAvailable": "You are not a member of any team. Please ask an admin to add you to a team.",
 
     // User team viewer
     "userTeam.userSelection": "User Selection",

@@ -21,6 +21,13 @@ interface TimeEntryDialogProps {
   onAdd: (entry: Omit<TimeEntry, "id">) => void
 }
 
+interface TeamInfo {
+  id: string
+  linear_team_id: string
+  name: string
+  key: string
+}
+
 export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, onDelete, onAdd }: TimeEntryDialogProps) {
   const { t, language } = useLanguage()
   const { user } = useAuth()
@@ -28,12 +35,32 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
   const [comment, setComment] = useState("")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  const [userTeams, setUserTeams] = useState<TeamInfo[]>([])
+
+  // ユーザーの所属チームを取得
+  useEffect(() => {
+    const fetchUserTeams = async () => {
+      try {
+        const res = await fetch('/api/users/me/teams')
+        if (res.ok) {
+          const data = await res.json()
+          setUserTeams(data.teams || [])
+        }
+      } catch (err) {
+        console.error('Failed to fetch user teams:', err)
+      }
+    }
+    fetchUserTeams()
+  }, [])
   const [startTime, setStartTime] = useState("")
   const [endTime, setEndTime] = useState("")
   const [timeError, setTimeError] = useState("")
 
-  // タスクをフィルタリング: completed/canceledを除外し、assignee_emailが一致するもの + グローバルタスクのみ表示
+  // タスクをフィルタリング: completed/canceledを除外し、assignee_emailが一致するもの + グローバルタスク + チームタスクを表示
   const availableTasks = useMemo(() => {
+    // ユーザーの所属チームのlinear_team_idのセットを作成
+    const userTeamIds = new Set(userTeams.map(t => t.linear_team_id))
+
     return tasks.filter((task) => {
       // linear_state_typeがcompleted, canceledの場合は除外
       if (task.linear_state_type === 'completed' || task.linear_state_type === 'canceled') {
@@ -50,9 +77,14 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
         return true
       }
 
+      // 3. チームタスク（assignee_emailがnullでlinear_team_idが設定されている、かつユーザーがそのチームに所属している）
+      if (!task.assignee_email && task.linear_team_id && userTeamIds.has(task.linear_team_id)) {
+        return true
+      }
+
       return false
     })
-  }, [tasks, user?.email])
+  }, [tasks, user?.email, userTeams])
 
   // タスクをTeamごとにグループ化してソート
   const sortedGroupedTasks = useMemo(() => {
