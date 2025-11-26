@@ -35,9 +35,92 @@ $$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION auto_update_project_team() IS 'tasksが追加・更新されたときに、linear_projectsのlinear_team_idを自動的に更新';
 
+-- 管理者チェック用関数（SECURITY DEFINERでRLSをバイパスし、無限再帰を防ぐ）
+CREATE OR REPLACE FUNCTION public.check_is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.user_approvals
+    WHERE user_id = auth.uid() AND role = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+COMMENT ON FUNCTION public.check_is_admin() IS '管理者かどうかをチェックする関数（RLSの無限再帰を防ぐためSECURITY DEFINERを使用）';
+
 -- ============================================================================
 -- セクション2: テーブル作成
 -- ============================================================================
+
+-- ユーザー承認テーブル（認証の基本）
+CREATE TABLE IF NOT EXISTS public.user_approvals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID UNIQUE NOT NULL,
+  email TEXT NOT NULL,
+  approved BOOLEAN DEFAULT false,
+  role TEXT DEFAULT 'user',
+  name TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.user_approvals IS 'ユーザーの承認状態を管理するテーブル';
+COMMENT ON COLUMN public.user_approvals.user_id IS 'Supabase Authのユーザーid';
+COMMENT ON COLUMN public.user_approvals.approved IS '承認状態（true: 承認済み）';
+COMMENT ON COLUMN public.user_approvals.role IS 'ユーザーの役割（admin, user）';
+COMMENT ON COLUMN public.user_approvals.name IS 'ユーザーの表示名';
+
+-- RLS有効化（user_approvals）
+ALTER TABLE public.user_approvals ENABLE ROW LEVEL SECURITY;
+
+-- user_approvalsのRLSポリシー
+DROP POLICY IF EXISTS "Users can view their own approval" ON public.user_approvals;
+DROP POLICY IF EXISTS "Users can insert their own approval" ON public.user_approvals;
+DROP POLICY IF EXISTS "Admins can view all approvals" ON public.user_approvals;
+
+CREATE POLICY "Users can view their own approval"
+  ON public.user_approvals
+  FOR SELECT
+  USING (user_id = auth.uid());
+
+CREATE POLICY "Users can insert their own approval"
+  ON public.user_approvals
+  FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+-- 注意: SECURITY DEFINER関数を使用して無限再帰を防ぐ
+CREATE POLICY "Admins can view all approvals"
+  ON public.user_approvals
+  FOR SELECT
+  USING (public.check_is_admin());
+
+-- タスクテーブル
+CREATE TABLE IF NOT EXISTS public.tasks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  color TEXT DEFAULT '#3b82f6',
+  user_id UUID NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.tasks IS 'タスク情報を保存するテーブル';
+
+-- 時間記録テーブル
+CREATE TABLE IF NOT EXISTS public.time_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
+  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_time TIMESTAMP WITH TIME ZONE,
+  comment TEXT DEFAULT '',
+  date TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.time_entries IS '時間記録を保存するテーブル';
+COMMENT ON COLUMN public.time_entries.end_time IS 'タスク終了時刻（進行中の場合はNULL）';
 
 -- Linearプロジェクト情報を保存するテーブル
 CREATE TABLE IF NOT EXISTS public.linear_projects (
@@ -452,17 +535,11 @@ CREATE POLICY "Users can view their own team memberships"
 DROP POLICY IF EXISTS "Admins can update all users" ON public.user_approvals;
 DROP POLICY IF EXISTS "Users can update their own name" ON public.user_approvals;
 
--- 管理者は全てのユーザーを更新可能
+-- 管理者は全てのユーザーを更新可能（SECURITY DEFINER関数を使用して無限再帰を防ぐ）
 CREATE POLICY "Admins can update all users"
   ON public.user_approvals
   FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.user_approvals
-      WHERE public.user_approvals.user_id = auth.uid()
-      AND public.user_approvals.role = 'admin'
-    )
-  );
+  USING (public.check_is_admin());
 
 -- ユーザーが自分の名前を更新できるポリシーを追加
 CREATE POLICY "Users can update their own name"
