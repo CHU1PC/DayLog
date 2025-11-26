@@ -83,6 +83,13 @@ export async function POST(request: NextRequest) {
       projectName = project?.name || null
     }
 
+    // グローバルタスク（管理者作成のその他タスク）の場合、Team名とProject名にタスク名を使用
+    const isGlobalTask = task?.assignee_email === 'TaskForAll@task.com'
+    if (isGlobalTask && task?.name) {
+      teamName = task.name
+      projectName = task.name
+    }
+
     // ユーザー名をuser_approvalsから取得
     let assigneeName = null
     if (timeEntry.user_id) {
