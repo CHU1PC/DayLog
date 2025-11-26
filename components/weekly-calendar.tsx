@@ -152,6 +152,10 @@ export function WeeklyCalendar({ tasks, timeEntries, onUpdateEntry, onDeleteEntr
   }
 
   const handleEntryClick = (entry: TimeEntry) => {
+    // 作業中のエントリ（endTimeがnull）は編集できない
+    if (!entry.endTime) {
+      return
+    }
     setSelectedEntry(entry)
     setIsDialogOpen(true)
   }
@@ -242,7 +246,11 @@ export function WeeklyCalendar({ tasks, timeEntries, onUpdateEntry, onDeleteEntr
                   return (
                     <div
                       key={entry.id}
-                      className="absolute left-1 right-1 rounded-md px-2.5 py-2 cursor-pointer pointer-events-auto overflow-hidden hover:ring-2 hover:ring-white/50 transition-all shadow-sm"
+                      className={`absolute left-1 right-1 rounded-md px-2.5 py-2 pointer-events-auto overflow-hidden transition-all shadow-sm ${
+                        entry.endTime
+                          ? "cursor-pointer hover:ring-2 hover:ring-white/50"
+                          : "cursor-not-allowed opacity-80"
+                      }`}
                       style={{
                         backgroundColor: task.color,
                         top: position.top,
