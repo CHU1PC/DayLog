@@ -10,14 +10,16 @@ import { UserTeamViewer } from "@/components/user-team-viewer"
 import { UnassignedTasks } from "@/components/unassigned-tasks"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import type { TimeEntry } from "@/lib/types"
 import { useSupabase } from "@/lib/hooks/useSupabase"
 import { useAuth } from "@/lib/contexts/AuthContext"
-import { LogOut, Settings } from "lucide-react"
+import { LogOut, Settings, Menu } from "lucide-react"
 
 export default function HomePage() {
   const [view, setView] = useState<"calendar" | "tasks" | "teams" | "user-teams" | "unassigned">("calendar")
   const [showSettings, setShowSettings] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, loading: authLoading, isApproved, isAdmin, userName, signOut } = useAuth()
   const router = useRouter()
 
@@ -172,7 +174,65 @@ export default function HomePage() {
 
         <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-3 border-t border-border">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1 sm:gap-2">
+            {/* モバイル用ハンバーガーメニュー (md以下で表示) */}
+            <div className="md:hidden">
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="px-2">
+                    <Menu className="w-5 h-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64">
+                  <SheetHeader>
+                    <SheetTitle>メニュー</SheetTitle>
+                  </SheetHeader>
+                  <nav className="flex flex-col gap-2 mt-4">
+                    <Button
+                      variant={view === "calendar" ? "default" : "ghost"}
+                      onClick={() => { setView("calendar"); setMobileMenuOpen(false); }}
+                      className="justify-start"
+                    >
+                      カレンダー
+                    </Button>
+                    <Button
+                      variant={view === "tasks" ? "default" : "ghost"}
+                      onClick={() => { setView("tasks"); setMobileMenuOpen(false); }}
+                      className="justify-start"
+                    >
+                      タスク管理
+                    </Button>
+                    {isAdmin && (
+                      <>
+                        <Button
+                          variant={view === "unassigned" ? "default" : "ghost"}
+                          onClick={() => { setView("unassigned"); setMobileMenuOpen(false); }}
+                          className="justify-start"
+                        >
+                          未アサインタスク
+                        </Button>
+                        <Button
+                          variant={view === "teams" ? "default" : "ghost"}
+                          onClick={() => { setView("teams"); setMobileMenuOpen(false); }}
+                          className="justify-start"
+                        >
+                          Team管理
+                        </Button>
+                        <Button
+                          variant={view === "user-teams" ? "default" : "ghost"}
+                          onClick={() => { setView("user-teams"); setMobileMenuOpen(false); }}
+                          className="justify-start"
+                        >
+                          ユーザーTeam表示
+                        </Button>
+                      </>
+                    )}
+                  </nav>
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            {/* デスクトップ用ナビゲーション (md以上で表示) */}
+            <div className="hidden md:flex items-center gap-1 sm:gap-2">
               <Button variant={view === "calendar" ? "default" : "ghost"} onClick={() => setView("calendar")} size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
                 カレンダー
               </Button>
@@ -193,10 +253,12 @@ export default function HomePage() {
                 </>
               )}
             </div>
-            <div className="flex items-center gap-2">
+
+            {/* 右側: ユーザー情報・接続状態・アクションボタン */}
+            <div className="flex items-center gap-1 sm:gap-2">
               {/* ユーザー名表示 */}
               {userName && (
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted border border-border">
+                <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted border border-border">
                   <span className="text-xs font-medium text-foreground">{userName}</span>
                 </div>
               )}
@@ -205,7 +267,7 @@ export default function HomePage() {
               {isAdmin && (
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-500/10 border border-blue-500/20">
                   <div className="w-2 h-2 rounded-full bg-blue-500" />
-                  <span className="text-xs font-semibold text-blue-500">管理者</span>
+                  <span className="hidden sm:inline text-xs font-semibold text-blue-500">管理者</span>
                 </div>
               )}
 
@@ -216,7 +278,7 @@ export default function HomePage() {
                   connectionStatus === 'disconnected' ? 'bg-yellow-500' :
                   'bg-gray-400 animate-pulse'
                 }`} />
-                <span className="hidden sm:inline text-muted-foreground">
+                <span className="hidden md:inline text-muted-foreground">
                   {connectionStatus === 'connected' ? 'Supabase接続済' :
                    connectionStatus === 'disconnected' ? 'ローカルモード' :
                    '接続確認中...'}
@@ -224,16 +286,17 @@ export default function HomePage() {
               </div>
               {isAdmin && (
                 <Button variant="outline" onClick={() => router.push('/admin')} size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
-                  管理画面
+                  <span className="hidden sm:inline">管理画面</span>
+                  <span className="sm:hidden">管理</span>
                 </Button>
               )}
-              <Button variant="ghost" onClick={() => setShowSettings(true)} size="sm" className="text-xs sm:text-sm px-2 sm:px-3" title="設定">
-                <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline ml-1">設定</span>
+              <Button variant="ghost" onClick={() => setShowSettings(true)} size="sm" className="px-2 sm:px-3" title="設定">
+                <Settings className="w-4 h-4" />
+                <span className="hidden md:inline ml-1">設定</span>
               </Button>
-              <Button variant="ghost" onClick={handleLogout} size="sm" className="text-xs sm:text-sm px-2 sm:px-3" title="ログアウト">
-                <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline ml-1">ログアウト</span>
+              <Button variant="ghost" onClick={handleLogout} size="sm" className="px-2 sm:px-3" title="ログアウト">
+                <LogOut className="w-4 h-4" />
+                <span className="hidden md:inline ml-1">ログアウト</span>
               </Button>
             </div>
           </div>

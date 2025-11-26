@@ -669,6 +669,11 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                   placeholder="例: 勉強、会議、休憩"
                   value={newGlobalTaskName}
                   onChange={(e) => setNewGlobalTaskName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !creatingGlobalTask) {
+                      handleCreateGlobalTask()
+                    }
+                  }}
                 />
               </div>
 
@@ -679,13 +684,13 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                   value={newGlobalTaskLabel}
                   onChange={(e) => setNewGlobalTaskLabel(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !creatingGlobalTask) {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !creatingGlobalTask) {
                       handleCreateGlobalTask()
                     }
                   }}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  タスク選択時にこのラベルでグループ化されます
+                  タスク選択時にこのラベルでグループ化されます（⌘/Ctrl + Enter で作成）
                 </p>
               </div>
             </div>

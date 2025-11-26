@@ -193,7 +193,17 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
 
           <div>
             <label className="block text-sm font-medium mb-2">コメント</label>
-            <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={4} />
+            <Textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !timeError) {
+                  handleSave()
+                }
+              }}
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground mt-1">⌘/Ctrl + Enter で保存</p>
           </div>
         </div>
 

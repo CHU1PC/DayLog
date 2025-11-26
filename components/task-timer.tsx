@@ -620,10 +620,16 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
                 <Textarea
                   value={pendingComment}
                   onChange={(e) => setPendingComment(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !isSaving) {
+                      handleSaveEntry()
+                    }
+                  }}
                   placeholder="作業内容を入力してください"
                   rows={4}
                   autoFocus
                 />
+                <p className="text-xs text-muted-foreground mt-1">⌘/Ctrl + Enter で保存</p>
               </div>
             </div>
             <DialogFooter>
@@ -719,10 +725,16 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
               <Textarea
                 value={pendingComment}
                 onChange={(e) => setPendingComment(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !isSaving) {
+                    handleSaveEntry()
+                  }
+                }}
                 placeholder="作業内容を入力してください"
                 rows={4}
                 autoFocus
               />
+              <p className="text-xs text-muted-foreground mt-1">⌘/Ctrl + Enter で保存</p>
             </div>
           </div>
           <DialogFooter>
