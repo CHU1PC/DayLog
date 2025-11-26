@@ -16,6 +16,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { useLanguage } from "@/lib/contexts/LanguageContext"
 
 interface TaskManagementProps {
   tasks: Task[]
@@ -36,6 +37,7 @@ interface TeamInfo {
 
 export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask, onDeleteTask }: TaskManagementProps) {
   const { isAdmin } = useAuth()
+  const { t } = useLanguage()
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
@@ -217,7 +219,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
 
     // Linear連携タスクは編集不可
     if (editingTask.linear_issue_id) {
-      alert("このタスクはLinearで管理されているため、Linearから編集してください。")
+      alert(t("taskMgmt.linearManaged"))
       setEditingTask(null)
       return
     }
@@ -242,7 +244,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
     // Linear連携タスクは削除不可（UIで既にボタンが表示されないが念のため）
     const task = tasks.find(t => t.id === id)
     if (task?.linear_issue_id) {
-      alert("このタスクはLinearで管理されているため、Linearから削除してください。")
+      alert(t("taskMgmt.linearManagedDelete"))
       return
     }
 
@@ -269,19 +271,19 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.details || data.error || 'Linear同期に失敗しました')
+        throw new Error(data.details || data.error || t("taskMgmt.syncFailed"))
       }
 
       const summary = data.summary
       setSyncMessage({
         type: 'success',
-        text: `同期完了: Team ${summary.teams}件、Project ${summary.projects}件、メンバーシップ ${summary.memberships}件、Issue ${summary.synced}件追加、${summary.skipped}件スキップ${summary.errors > 0 ? `、${summary.errors}件エラー` : ''}`
+        text: `${t("taskMgmt.syncComplete")}: Team ${summary.teams}, Project ${summary.projects}, Membership ${summary.memberships}, Issue ${summary.synced} added, ${summary.skipped} skipped${summary.errors > 0 ? `, ${summary.errors} errors` : ''}`
       })
     } catch (err) {
       console.error('Sync error:', err)
       setSyncMessage({
         type: 'error',
-        text: err instanceof Error ? err.message : 'Linear同期に失敗しました'
+        text: err instanceof Error ? err.message : t("taskMgmt.syncFailed")
       })
     } finally {
       setSyncing(false)
@@ -304,7 +306,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
     if (!newGlobalTaskName.trim()) {
       setSyncMessage({
         type: 'error',
-        text: 'タスク名を入力してください'
+        text: t("taskMgmt.enterTaskName")
       })
       return
     }
@@ -312,7 +314,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
     if (!newGlobalTaskLabel.trim()) {
       setSyncMessage({
         type: 'error',
-        text: 'ラベル名を入力してください'
+        text: t("taskMgmt.enterLabel")
       })
       return
     }
@@ -335,7 +337,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.details || data.error || 'グローバルタスクの作成に失敗しました')
+        throw new Error(data.details || data.error || t("taskMgmt.createFailed"))
       }
 
       setSyncMessage({
@@ -354,7 +356,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       console.error('Create global task error:', err)
       setSyncMessage({
         type: 'error',
-        text: err instanceof Error ? err.message : 'グローバルタスクの作成に失敗しました'
+        text: err instanceof Error ? err.message : t("taskMgmt.createFailed")
       })
     } finally {
       setCreatingGlobalTask(false)
@@ -367,9 +369,9 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       {syncing && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card border border-border rounded-lg p-8 space-y-4 text-center min-w-[400px]">
-            <div className="text-lg font-semibold">Linear同期中...</div>
+            <div className="text-lg font-semibold">{t("taskMgmt.syncing")}</div>
             <div className="text-sm text-muted-foreground">
-              新しいIssueをデータベースに追加しています。
+              {t("taskMgmt.syncingDesc")}
             </div>
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
@@ -382,9 +384,9 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
 
       <div className="w-full lg:w-64 space-y-4">
         <div className="bg-card border border-border rounded-lg p-4">
-          <div className="text-sm text-muted-foreground mb-2">全タスクの総合計:</div>
+          <div className="text-sm text-muted-foreground mb-2">{t("taskMgmt.totalTime")}:</div>
           <div className="text-2xl font-bold">
-            {totalTime.hours}時間{totalTime.minutes}分
+            {totalTime.hours}{t("timeEntry.hours")}{totalTime.minutes}{t("timeEntry.minutes")}
           </div>
         </div>
       </div>
@@ -404,9 +406,9 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
         <div className="bg-card border border-border rounded-lg p-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
-              <div className="text-sm font-medium mb-1">タスク一覧</div>
+              <div className="text-sm font-medium mb-1">{t("taskMgmt.taskList")}</div>
               <div className="text-xs text-muted-foreground">
-                Linear上でIssueを作成すると自動的にタスクが追加されます
+                {t("taskMgmt.taskListDesc")}
               </div>
             </div>
             {isAdmin && (
@@ -415,7 +417,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                 variant="outline"
                 size="sm"
               >
-                グローバルタスク作成
+                {t("taskMgmt.createGlobalTask")}
               </Button>
             )}
           </div>
@@ -425,13 +427,13 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
           {groupedTasks.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                タスクがありません
+                {t("taskMgmt.noTasks")}
               </CardContent>
             </Card>
           ) : (
             groupedTasks.map((group) => {
               const isTeamExpanded = expandedTeams.has(group.teamId)
-              const teamName = group.team?.name || 'チームなし'
+              const teamName = group.team?.name || t("taskMgmt.noTeam")
               const teamKey = group.team?.key || ''
 
               return (
@@ -460,7 +462,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                           </div>
                         </div>
                         <Badge variant="outline">
-                          {group.tasks.length} タスク
+                          {group.tasks.length} {t("taskMgmt.tasks")}
                         </Badge>
                       </div>
                     </CardHeader>
@@ -471,11 +473,11 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                           // 優先度ラベルと色を取得
                           const getPriorityInfo = (priority?: number) => {
                             switch (priority) {
-                              case 1: return { label: '緊急', color: 'bg-red-500 text-white' }
-                              case 2: return { label: '高', color: 'bg-orange-500 text-white' }
-                              case 3: return { label: '中', color: 'bg-yellow-500 text-white' }
-                              case 4: return { label: '低', color: 'bg-blue-500 text-white' }
-                              default: return { label: 'なし', color: 'bg-gray-400 text-white' }
+                              case 1: return { label: t('priority.urgent'), color: 'bg-red-500 text-white' }
+                              case 2: return { label: t('priority.high'), color: 'bg-orange-500 text-white' }
+                              case 3: return { label: t('priority.medium'), color: 'bg-yellow-500 text-white' }
+                              case 4: return { label: t('priority.low'), color: 'bg-blue-500 text-white' }
+                              default: return { label: t('priority.none'), color: 'bg-gray-400 text-white' }
                             }
                           }
 
@@ -526,10 +528,10 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                                         rel="noopener noreferrer"
                                         className="hover:text-primary underline"
                                       >
-                                        Linearで開く
+                                        {t("taskMgmt.openInLinear")}
                                       </a>
                                     ) : (
-                                      <span>Linearで管理</span>
+                                      <span>{t("taskMgmt.managedByLinear")}</span>
                                     )}
                                   </div>
                                 )}
@@ -569,49 +571,49 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
 
       <div className="w-full lg:w-80 space-y-4">
         <div className="bg-card border border-border rounded-lg p-4">
-          <div className="text-lg font-semibold mb-4">稼働時間統計</div>
+          <div className="text-lg font-semibold mb-4">{t("taskMgmt.workStats")}</div>
 
           <div className="space-y-3">
             <div>
-              <div className="text-sm text-muted-foreground mb-1">今月:</div>
+              <div className="text-sm text-muted-foreground mb-1">{t("taskMgmt.thisMonth")}:</div>
               <div className="text-xl font-bold">
-                {monthTime.hours}時間{monthTime.minutes}分
+                {monthTime.hours}{t("timeEntry.hours")}{monthTime.minutes}{t("timeEntry.minutes")}
               </div>
             </div>
 
             <div>
-              <div className="text-sm text-muted-foreground mb-1">先月:</div>
+              <div className="text-sm text-muted-foreground mb-1">{t("taskMgmt.lastMonth")}:</div>
               <div className="text-lg font-semibold text-muted-foreground">
-                {lastMonthTime.hours}時間{lastMonthTime.minutes}分
+                {lastMonthTime.hours}{t("timeEntry.hours")}{lastMonthTime.minutes}{t("timeEntry.minutes")}
               </div>
             </div>
 
             <div>
-              <div className="text-sm text-muted-foreground mb-1">今週:</div>
+              <div className="text-sm text-muted-foreground mb-1">{t("taskMgmt.thisWeek")}:</div>
               <div className="text-xl font-bold">
-                {weekTime.hours}時間{weekTime.minutes}分
+                {weekTime.hours}{t("timeEntry.hours")}{weekTime.minutes}{t("timeEntry.minutes")}
               </div>
             </div>
 
             <div>
-              <div className="text-sm text-muted-foreground mb-1">先週:</div>
+              <div className="text-sm text-muted-foreground mb-1">{t("taskMgmt.lastWeek")}:</div>
               <div className="text-lg font-semibold text-muted-foreground">
-                {lastWeekTime.hours}時間{lastWeekTime.minutes}分
+                {lastWeekTime.hours}{t("timeEntry.hours")}{lastWeekTime.minutes}{t("timeEntry.minutes")}
               </div>
             </div>
 
             <div className="flex justify-between">
               <div>
-                <div className="text-sm text-muted-foreground mb-1">今日:</div>
+                <div className="text-sm text-muted-foreground mb-1">{t("taskMgmt.today")}:</div>
                 <div className="text-lg font-semibold">
-                  {todayTime.hours}時間{todayTime.minutes}分
+                  {todayTime.hours}{t("timeEntry.hours")}{todayTime.minutes}{t("timeEntry.minutes")}
                 </div>
               </div>
 
               <div>
-                <div className="text-sm text-muted-foreground mb-1">昨日:</div>
+                <div className="text-sm text-muted-foreground mb-1">{t("taskMgmt.yesterday")}:</div>
                 <div className="text-lg font-semibold">
-                  {yesterdayTime.hours}時間{yesterdayTime.minutes}分
+                  {yesterdayTime.hours}{t("timeEntry.hours")}{yesterdayTime.minutes}{t("timeEntry.minutes")}
                 </div>
               </div>
             </div>
@@ -622,7 +624,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       {editingTask && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card border border-border rounded-lg p-6 w-96 space-y-4">
-            <h3 className="text-lg font-semibold">タスクを編集</h3>
+            <h3 className="text-lg font-semibold">{t("taskMgmt.editTask")}</h3>
 
             <Input
               value={editingTask.name}
@@ -644,10 +646,10 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
 
             <div className="flex gap-2">
               <Button onClick={handleUpdateTask} className="flex-1">
-                保存
+                {t("common.save")}
               </Button>
               <Button onClick={() => setEditingTask(null)} variant="outline" className="flex-1">
-                キャンセル
+                {t("common.cancel")}
               </Button>
             </div>
           </div>
@@ -657,16 +659,16 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       {showGlobalTaskDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card border border-border rounded-lg p-6 w-96 space-y-4">
-            <h3 className="text-lg font-semibold">グローバルタスクを作成</h3>
+            <h3 className="text-lg font-semibold">{t("taskMgmt.createGlobalTaskTitle")}</h3>
             <p className="text-sm text-muted-foreground">
-              全ユーザーが使用できるタスクを作成します
+              {t("taskMgmt.createGlobalTaskDesc")}
             </p>
 
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">タスク名</label>
+                <label className="text-sm font-medium mb-1.5 block">{t("taskMgmt.taskName")}</label>
                 <Input
-                  placeholder="例: 勉強、会議、休憩"
+                  placeholder={t("taskMgmt.taskNamePlaceholder")}
                   value={newGlobalTaskName}
                   onChange={(e) => setNewGlobalTaskName(e.target.value)}
                   onKeyDown={(e) => {
@@ -678,9 +680,9 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1.5 block">ラベル（グループ名）</label>
+                <label className="text-sm font-medium mb-1.5 block">{t("taskMgmt.labelName")}</label>
                 <Input
-                  placeholder="例: その他、共通、日常"
+                  placeholder={t("taskMgmt.labelPlaceholder")}
                   value={newGlobalTaskLabel}
                   onChange={(e) => setNewGlobalTaskLabel(e.target.value)}
                   onKeyDown={(e) => {
@@ -690,7 +692,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                   }}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  タスク選択時にこのラベルでグループ化されます（⌘/Ctrl + Enter で作成）
+                  {t("taskMgmt.labelDesc")}
                 </p>
               </div>
             </div>
@@ -704,10 +706,10 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                 {creatingGlobalTask ? (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    作成中...
+                    {t("taskMgmt.creating")}
                   </>
                 ) : (
-                  '作成'
+                  t("taskMgmt.create")
                 )}
               </Button>
               <Button
@@ -720,7 +722,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                 className="flex-1"
                 disabled={creatingGlobalTask}
               >
-                キャンセル
+                {t("common.cancel")}
               </Button>
             </div>
           </div>

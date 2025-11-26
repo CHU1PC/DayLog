@@ -18,6 +18,7 @@ import {
   showTimerProgressNotification,
   closeNotification,
 } from "@/lib/notifications"
+import { useLanguage } from "@/lib/contexts/LanguageContext"
 
 // タイムゾーン定義
 const TIMEZONES = {
@@ -55,6 +56,7 @@ interface TaskTimerProps {
 
 export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHeaderMode = false }: TaskTimerProps) {
   const { user, userName } = useAuth()
+  const { t } = useLanguage()
   const [selectedTaskId, setSelectedTaskId] = useState<string>("")
   const [isRunning, setIsRunning] = useState(false)
   const [startTime, setStartTime] = useState<string>("")
@@ -189,7 +191,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       teamName = `Team: ${task.linear_identifier?.split('-')[0] || 'Unknown'}`
     } else {
       // その他
-      teamName = 'その他'
+      teamName = t("taskMgmt.other")
     }
 
     if (!groups[teamName]) {
@@ -562,7 +564,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 w-full sm:flex-1 sm:max-w-3xl">
                 <Select value={selectedTaskId} onValueChange={setSelectedTaskId} disabled={isRunning}>
                   <SelectTrigger className="w-full sm:w-[240px]">
-                    <SelectValue placeholder="タスクを選択" />
+                    <SelectValue placeholder={t("timer.selectTask")} />
                   </SelectTrigger>
                   <SelectContent className="max-h-[400px]" position="popper" sideOffset={4}>
                     {sortedGroupedTasks.map(([teamName, teamTasks]) => (
@@ -597,11 +599,11 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
                 <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
                   <Button onClick={handleStart} disabled={!selectedTaskId || isRunning} size="sm" className="flex-1 sm:flex-none text-xs sm:text-sm">
                     <Play className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                    開始
+                    {t("timer.start")}
                   </Button>
                   <Button onClick={handleStop} disabled={!isRunning} variant="destructive" size="sm" className="flex-1 sm:flex-none text-xs sm:text-sm">
                     <Square className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                    停止
+                    {t("timer.stop")}
                   </Button>
                 </div>
               </div>
@@ -612,11 +614,11 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
         <Dialog open={showCommentDialog} onOpenChange={setShowCommentDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>作業コメントを入力</DialogTitle>
+              <DialogTitle>{t("timer.commentTitle")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">コメント</label>
+                <label className="block text-sm font-medium mb-2">{t("timeEntry.comment")}</label>
                 <Textarea
                   value={pendingComment}
                   onChange={(e) => setPendingComment(e.target.value)}
@@ -625,19 +627,19 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
                       handleSaveEntry()
                     }
                   }}
-                  placeholder="作業内容を入力してください"
+                  placeholder={t("timeEntry.commentPlaceholder")}
                   rows={4}
                   autoFocus
                 />
-                <p className="text-xs text-muted-foreground mt-1">⌘/Ctrl + Enter で保存</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("timeEntry.saveShortcut")}</p>
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowCommentDialog(false)} disabled={isSaving}>
-                キャンセル
+                {t("common.cancel")}
               </Button>
               <Button onClick={handleSaveEntry} disabled={isSaving}>
-                {isSaving ? "保存中..." : "保存"}
+                {isSaving ? t("settings.saving") : t("common.save")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -646,16 +648,16 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
         <Dialog open={showNameRequiredDialog} onOpenChange={setShowNameRequiredDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>名前の設定が必要です</DialogTitle>
+              <DialogTitle>{t("timer.nameRequired")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                タイマーを開始するには、設定画面で名前を設定してください。
+                {t("timer.nameRequiredDesc")}
               </p>
             </div>
             <DialogFooter>
               <Button onClick={() => setShowNameRequiredDialog(false)}>
-                閉じる
+                {t("timer.close")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -674,7 +676,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
             <div className="flex items-center gap-4 flex-1 max-w-3xl">
               <Select value={selectedTaskId} onValueChange={setSelectedTaskId} disabled={isRunning}>
                 <SelectTrigger className="w-[240px]">
-                  <SelectValue placeholder="タスクを選択" />
+                  <SelectValue placeholder={t("timer.selectTask")} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableTasks.map((task) => (
@@ -702,11 +704,11 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
               <div className="flex gap-2 ml-auto">
                 <Button onClick={handleStart} disabled={!selectedTaskId || isRunning} size="sm">
                   <Play className="w-4 h-4 mr-1" />
-                  開始
+                  {t("timer.start")}
                 </Button>
                 <Button onClick={handleStop} disabled={!isRunning} variant="destructive" size="sm">
                   <Square className="w-4 h-4 mr-1" />
-                  停止
+                  {t("timer.stop")}
                 </Button>
               </div>
             </div>
@@ -717,11 +719,11 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       <Dialog open={showCommentDialog} onOpenChange={setShowCommentDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>作業コメントを入力</DialogTitle>
+            <DialogTitle>{t("timer.commentTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">コメント</label>
+              <label className="block text-sm font-medium mb-2">{t("timeEntry.comment")}</label>
               <Textarea
                 value={pendingComment}
                 onChange={(e) => setPendingComment(e.target.value)}
@@ -730,19 +732,19 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
                     handleSaveEntry()
                   }
                 }}
-                placeholder="作業内容を入力してください"
+                placeholder={t("timeEntry.commentPlaceholder")}
                 rows={4}
                 autoFocus
               />
-              <p className="text-xs text-muted-foreground mt-1">⌘/Ctrl + Enter で保存</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("timeEntry.saveShortcut")}</p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCommentDialog(false)} disabled={isSaving}>
-              キャンセル
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleSaveEntry} disabled={isSaving}>
-              {isSaving ? "保存中..." : "保存"}
+              {isSaving ? t("settings.saving") : t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -751,16 +753,16 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       <Dialog open={showNameRequiredDialog} onOpenChange={setShowNameRequiredDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>名前の設定が必要です</DialogTitle>
+            <DialogTitle>{t("timer.nameRequired")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              タイマーを開始するには、設定画面で名前を設定してください。
+              {t("timer.nameRequiredDesc")}
             </p>
           </div>
           <DialogFooter>
             <Button onClick={() => setShowNameRequiredDialog(false)}>
-              閉じる
+              {t("timer.close")}
             </Button>
           </DialogFooter>
         </DialogContent>

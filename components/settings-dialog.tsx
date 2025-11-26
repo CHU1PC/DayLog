@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/lib/contexts/AuthContext"
+import { useLanguage, type Language } from "@/lib/contexts/LanguageContext"
 
 interface SettingsDialogProps {
   open: boolean
@@ -14,6 +15,7 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { user, userName, updateUserName } = useAuth()
+  const { language, setLanguage, t } = useLanguage()
   const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -21,12 +23,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [notificationInterval, setNotificationInterval] = useState("3600000") // デフォルト: 1時間
   const [notificationMode, setNotificationMode] = useState<"preset" | "custom">("preset")
   const [customMinutes, setCustomMinutes] = useState("60")
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>(language)
 
   useEffect(() => {
     if (open) {
       setName(userName || "")
       setError(null)
       setSuccess(false)
+      setSelectedLanguage(language)
 
       // localStorageから通知間隔を読み込み
       const savedInterval = localStorage.getItem('timerNotificationInterval')
@@ -43,14 +47,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         }
       }
     }
-  }, [open, userName])
+  }, [open, userName, language])
 
   const handleSave = async () => {
     setError(null)
     setSuccess(false)
 
     if (!name.trim()) {
-      setError("名前を入力してください")
+      setError(t("settings.enterName"))
       return
     }
 
@@ -58,11 +62,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     if (notificationMode === "custom") {
       const minutes = Number(customMinutes)
       if (isNaN(minutes) || minutes < 0) {
-        setError("有効な分数を入力してください（0分以上）")
+        setError(t("settings.invalidMinutes"))
         return
       }
       if (minutes > 0 && minutes < 0.17) { // 10秒未満
-        setError("通知間隔は10秒以上に設定してください")
+        setError(t("settings.minInterval"))
         return
       }
     }
@@ -83,6 +87,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       // カスタムイベントを発行して他のコンポーネントに変更を通知
       window.dispatchEvent(new Event('notificationIntervalChanged'))
 
+      // 言語設定を保存
+      if (selectedLanguage !== language) {
+        setLanguage(selectedLanguage)
+      }
+
       setSuccess(true)
 
       // 2秒後にダイアログを閉じる
@@ -90,7 +99,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         onOpenChange(false)
       }, 1500)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "設定の更新に失敗しました")
+      setError(err instanceof Error ? err.message : t("settings.updateFailed"))
     } finally {
       setLoading(false)
     }
@@ -100,26 +109,26 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>設定</DialogTitle>
+          <DialogTitle>{t("settings.title")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="block text-sm font-medium">メールアドレス</label>
+            <label className="block text-sm font-medium">{t("settings.email")}</label>
             <Input
               type="email"
               value={user?.email || ""}
               disabled
               className="bg-muted"
             />
-            <p className="text-xs text-muted-foreground">メールアドレスは変更できません</p>
+            <p className="text-xs text-muted-foreground">{t("settings.emailNotEditable")}</p>
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium">名前</label>
+            <label className="block text-sm font-medium">{t("settings.name")}</label>
             <Input
               type="text"
-              placeholder="山田太郎"
+              placeholder={t("settings.namePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={loading}
@@ -127,7 +136,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium">タイマー通知の間隔</label>
+            <label className="block text-sm font-medium">{t("settings.timerNotification")}</label>
 
             {/* モード選択 */}
             <div className="flex gap-2">
@@ -138,7 +147,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 disabled={loading}
                 className="flex-1"
               >
-                プリセット
+                {t("settings.preset")}
               </Button>
               <Button
                 type="button"
@@ -147,7 +156,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 disabled={loading}
                 className="flex-1"
               >
-                カスタム
+                {t("settings.custom")}
               </Button>
             </div>
 
@@ -162,13 +171,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="300000">5分ごと</SelectItem>
-                  <SelectItem value="600000">10分ごと</SelectItem>
-                  <SelectItem value="900000">15分ごと</SelectItem>
-                  <SelectItem value="1800000">30分ごと</SelectItem>
-                  <SelectItem value="3600000">1時間ごと（推奨）</SelectItem>
-                  <SelectItem value="7200000">2時間ごと</SelectItem>
-                  <SelectItem value="0">通知しない</SelectItem>
+                  <SelectItem value="300000">{t("settings.every5min")}</SelectItem>
+                  <SelectItem value="600000">{t("settings.every10min")}</SelectItem>
+                  <SelectItem value="900000">{t("settings.every15min")}</SelectItem>
+                  <SelectItem value="1800000">{t("settings.every30min")}</SelectItem>
+                  <SelectItem value="3600000">{t("settings.every1hour")}</SelectItem>
+                  <SelectItem value="7200000">{t("settings.every2hours")}</SelectItem>
+                  <SelectItem value="0">{t("settings.noNotification")}</SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -186,15 +195,40 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   disabled={loading}
                   className="flex-1"
                 />
-                <span className="text-sm text-muted-foreground">分ごと</span>
+                <span className="text-sm text-muted-foreground">{t("settings.minutesInterval")}</span>
               </div>
             )}
 
             <p className="text-xs text-muted-foreground">
               {notificationMode === "preset"
-                ? "タイマー実行中に定期的に通知を表示する間隔を設定できます"
-                : "10秒以上の任意の間隔を設定できます（小数点も可能）"}
+                ? t("settings.presetDescription")
+                : t("settings.customDescription")}
             </p>
+          </div>
+
+          {/* 言語設定 */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">{t("settings.language")}</label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={selectedLanguage === "ja" ? "default" : "outline"}
+                onClick={() => setSelectedLanguage("ja")}
+                disabled={loading}
+                className="flex-1"
+              >
+                {t("settings.japanese")}
+              </Button>
+              <Button
+                type="button"
+                variant={selectedLanguage === "en" ? "default" : "outline"}
+                onClick={() => setSelectedLanguage("en")}
+                disabled={loading}
+                className="flex-1"
+              >
+                {t("settings.english")}
+              </Button>
+            </div>
           </div>
 
           {error && (
@@ -205,17 +239,17 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
           {success && (
             <div className="bg-green-500/10 text-green-500 text-sm p-3 rounded-md">
-              名前を更新しました
+              {t("settings.nameUpdated")}
             </div>
           )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            キャンセル
+            {t("settings.cancel")}
           </Button>
           <Button onClick={handleSave} disabled={loading || success}>
-            {loading ? "保存中..." : success ? "保存完了" : "保存"}
+            {loading ? t("settings.saving") : success ? t("settings.saved") : t("settings.save")}
           </Button>
         </DialogFooter>
       </DialogContent>

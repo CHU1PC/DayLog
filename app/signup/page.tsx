@@ -2,12 +2,14 @@
 
 import { useState } from "react"
 import { useAuth } from "@/lib/contexts/AuthContext"
+import { useLanguage } from "@/lib/contexts/LanguageContext"
 import { Button } from "@/components/ui/button"
 
 export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
   const [googleLoading, setGoogleLoading] = useState(false)
   const { signInWithGoogle } = useAuth()
+  const { t } = useLanguage()
 
   const handleGoogleSignUp = async () => {
     setError(null)
@@ -16,7 +18,7 @@ export default function SignUpPage() {
     const { error } = await signInWithGoogle()
 
     if (error) {
-      setError(error.message || "Googleサインアップに失敗しました")
+      setError(error.message || t("signup.googleFailed"))
       setGoogleLoading(false)
     }
   }
@@ -25,8 +27,8 @@ export default function SignUpPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">DayLog</h1>
-          <p className="mt-2 text-muted-foreground">Googleアカウントで新規登録</p>
+          <h1 className="text-3xl font-bold">{t("login.title")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("signup.subtitle")}</p>
         </div>
 
         <div className="bg-card border border-border rounded-lg p-6 sm:p-8 space-y-6">
@@ -61,15 +63,15 @@ export default function SignUpPage() {
                 fill="#EA4335"
               />
             </svg>
-            {googleLoading ? "Google認証中..." : "Googleでサインアップ"}
+            {googleLoading ? t("login.googleLoading") : t("signup.googleButton")}
           </Button>
 
           <div className="space-y-2">
             <p className="text-center text-sm text-muted-foreground">
-              初回登録時は管理者の承認が必要です
+              {t("signup.approvalRequired")}
             </p>
             <p className="text-center text-xs text-muted-foreground">
-              Googleアカウントでサインアップすると、利用規約とプライバシーポリシーに同意したものとみなされます
+              {t("signup.termsAgreement")}
             </p>
           </div>
         </div>

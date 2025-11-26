@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/contexts/AuthContext"
+import { useLanguage } from "@/lib/contexts/LanguageContext"
 import { logger } from "@/lib/logger"
 import { Button } from "@/components/ui/button"
 
@@ -10,6 +11,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [googleLoading, setGoogleLoading] = useState(false)
   const { signInWithGoogle, user, isApproved, loading: authLoading } = useAuth()
+  const { t } = useLanguage()
   const router = useRouter()
 
   // 既にログイン済みの場合はリダイレクト
@@ -32,7 +34,7 @@ export default function LoginPage() {
     const { error } = await signInWithGoogle()
 
     if (error) {
-      setError(error.message || "Googleログインに失敗しました")
+      setError(error.message || t("login.googleFailed"))
       setGoogleLoading(false)
     }
   }
@@ -41,8 +43,8 @@ export default function LoginPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">DayLog</h1>
-          <p className="mt-2 text-muted-foreground">Googleアカウントでログイン</p>
+          <h1 className="text-3xl font-bold">{t("login.title")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("login.subtitle")}</p>
         </div>
 
         <div className="bg-card border border-border rounded-lg p-6 sm:p-8 space-y-6">
@@ -77,11 +79,11 @@ export default function LoginPage() {
                 fill="#EA4335"
               />
             </svg>
-            {googleLoading ? "Google認証中..." : "Googleでログイン"}
+            {googleLoading ? t("login.googleLoading") : t("login.googleButton")}
           </Button>
 
           <p className="text-center text-sm text-muted-foreground">
-            初回ログイン時は管理者の承認が必要です
+            {t("login.approvalRequired")}
           </p>
         </div>
       </div>

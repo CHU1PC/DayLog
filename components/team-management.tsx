@@ -23,6 +23,7 @@ import {
 import {
   Loader2, AlertCircle, Users, ExternalLink, Filter
 } from 'lucide-react'
+import { useLanguage } from '@/lib/contexts/LanguageContext'
 
 interface LinearIssue {
   id: string
@@ -90,6 +91,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export function TeamManagement() {
+  const { t } = useLanguage()
   const [teams, setTeams] = useState<TeamWithIssues[]>([])
   const [teamsLoading, setTeamsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -108,14 +110,14 @@ export function TeamManagement() {
     try {
       const res = await fetch('/api/admin/teams/issues')
       if (!res.ok) {
-        throw new Error('Team一覧の取得に失敗しました')
+        throw new Error(t("teams.fetchFailed"))
       }
       const data = await res.json()
       console.log('Teams fetched:', data.teams)
       setTeams(data.teams || [])
     } catch (err) {
       console.error('Fetch teams error:', err)
-      setError(err instanceof Error ? err.message : '不明なエラーが発生しました')
+      setError(err instanceof Error ? err.message : t("error.unknown"))
     } finally {
       setTeamsLoading(false)
     }
@@ -152,7 +154,7 @@ export function TeamManagement() {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
-          <div className="text-sm text-muted-foreground">読み込み中...</div>
+          <div className="text-sm text-muted-foreground">{t("loading.data")}</div>
         </div>
       </div>
     )
@@ -176,10 +178,10 @@ export function TeamManagement() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4" />
-                <CardTitle className="text-base">Team選択</CardTitle>
+                <CardTitle className="text-base">{t("teams.selectTeam")}</CardTitle>
                 {selectedTeamIds.size > 0 && (
                   <Badge variant="secondary">
-                    {selectedTeamIds.size}個選択中
+                    {t("teams.selectedCount", { count: selectedTeamIds.size })}
                   </Badge>
                 )}
               </div>
@@ -188,7 +190,7 @@ export function TeamManagement() {
                 size="sm"
                 onClick={() => setShowTeamSelector(!showTeamSelector)}
               >
-                {showTeamSelector ? '閉じる' : '開く'}
+                {showTeamSelector ? t("common.close") : t("common.open")}
               </Button>
             </div>
           </CardHeader>
@@ -201,14 +203,14 @@ export function TeamManagement() {
                     size="sm"
                     onClick={selectAllTeams}
                   >
-                    すべて選択
+                    {t("common.selectAll")}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={deselectAllTeams}
                   >
-                    選択解除
+                    {t("common.deselectAll")}
                   </Button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -248,13 +250,13 @@ export function TeamManagement() {
         {teams.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
-              Teamがありません。Webhook経由でLinearから同期されます。
+              {t("teams.noTeams")}
             </CardContent>
           </Card>
         ) : filteredTeams.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
-              選択されたTeamがありません。上記のフィルターからTeamを選択してください。
+              {t("teams.noTeamsSelected")}
             </CardContent>
           </Card>
         ) : (
@@ -291,10 +293,10 @@ export function TeamManagement() {
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">
                             <Users className="w-3 h-3 mr-1" />
-                            {team.members.length}名
+                            {t("teams.memberCount", { count: team.members.length })}
                           </Badge>
                           <Badge variant="outline">
-                            {team.issues.length}件のIssue
+                            {t("teams.issueCount", { count: team.issues.length })}
                           </Badge>
                         </div>
                       </div>
@@ -305,7 +307,7 @@ export function TeamManagement() {
                     <CardContent className="pt-4">
                       {team.members.length === 0 ? (
                         <div className="text-sm text-muted-foreground py-8 text-center border-2 border-dashed rounded-lg">
-                          このTeamにアサインされているIssueを持つメンバーがいません
+                          {t("teams.noMembersWithIssues")}
                         </div>
                       ) : (
                         <Accordion type="multiple" className="space-y-3">
@@ -329,12 +331,12 @@ export function TeamManagement() {
                                     <Badge
                                       variant={member.role === 'admin' ? 'default' : 'secondary'}
                                     >
-                                      {member.role === 'admin' ? '管理者' : 'ユーザー'}
+                                      {member.role === 'admin' ? t("admin.roleAdmin") : t("admin.roleUser")}
                                     </Badge>
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <Badge variant="outline">
-                                      {member.issues.length}件のIssue
+                                      {t("teams.issueCount", { count: member.issues.length })}
                                     </Badge>
                                   </div>
                                 </div>
@@ -344,10 +346,10 @@ export function TeamManagement() {
                                   <Table>
                                     <TableHeader>
                                       <TableRow>
-                                        <TableHead className="w-[120px]">Issue ID</TableHead>
-                                        <TableHead>タイトル</TableHead>
-                                        <TableHead className="w-[100px]">優先度</TableHead>
-                                        <TableHead className="w-[100px]">ステータス</TableHead>
+                                        <TableHead className="w-[120px]">{t("teams.issueId")}</TableHead>
+                                        <TableHead>{t("teams.issueTitle")}</TableHead>
+                                        <TableHead className="w-[100px]">{t("teams.issuePriority")}</TableHead>
+                                        <TableHead className="w-[100px]">{t("teams.issueStatus")}</TableHead>
                                         <TableHead className="w-[50px]"></TableHead>
                                       </TableRow>
                                     </TableHeader>

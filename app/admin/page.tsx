@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/AuthContext'
+import { useLanguage } from '@/lib/contexts/LanguageContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -24,6 +25,7 @@ interface User {
 
 export default function AdminPage() {
   const { user, loading: authLoading, isAdmin } = useAuth()
+  const { t, language } = useLanguage()
   const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,12 +54,12 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/users')
       if (!res.ok) {
-        throw new Error('ユーザー一覧の取得に失敗しました')
+        throw new Error(t("admin.fetchUsersFailed"))
       }
       const data = await res.json()
       setUsers(data.users || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : '不明なエラーが発生しました')
+      setError(err instanceof Error ? err.message : t("error.unknown"))
     } finally {
       setLoading(false)
     }
@@ -81,13 +83,13 @@ export default function AdminPage() {
       console.log('Approval response:', { status: res.status, data })
 
       if (!res.ok) {
-        throw new Error(data.details || data.error || 'ユーザーの承認に失敗しました')
+        throw new Error(data.details || data.error || t("admin.approveFailed"))
       }
 
       await fetchUsers()
     } catch (err) {
       console.error('Approval error:', err)
-      setError(err instanceof Error ? err.message : 'ユーザーの承認に失敗しました')
+      setError(err instanceof Error ? err.message : t("admin.approveFailed"))
     } finally {
       setApprovingUserId(null)
     }
@@ -107,20 +109,20 @@ export default function AdminPage() {
       console.log('Revoke response:', { status: res.status, data })
 
       if (!res.ok) {
-        throw new Error(data.details || data.error || '承認の取り消しに失敗しました')
+        throw new Error(data.details || data.error || t("admin.revokeFailed"))
       }
 
       await fetchUsers()
     } catch (err) {
       console.error('Revoke error:', err)
-      setError(err instanceof Error ? err.message : '承認の取り消しに失敗しました')
+      setError(err instanceof Error ? err.message : t("admin.revokeFailed"))
     } finally {
       setRevokingUserId(null)
     }
   }
 
   const handleDelete = async (userId: string) => {
-    if (!confirm('本当にこのユーザーを削除しますか？この操作は取り消せません。')) {
+    if (!confirm(t("admin.confirmDelete"))) {
       return
     }
 
@@ -137,20 +139,20 @@ export default function AdminPage() {
       console.log('Delete response:', { status: res.status, data })
 
       if (!res.ok) {
-        throw new Error(data.details || data.error || 'ユーザーの削除に失敗しました')
+        throw new Error(data.details || data.error || t("admin.deleteFailed"))
       }
 
       await fetchUsers()
     } catch (err) {
       console.error('Delete error:', err)
-      setError(err instanceof Error ? err.message : 'ユーザーの削除に失敗しました')
+      setError(err instanceof Error ? err.message : t("admin.deleteFailed"))
     } finally {
       setDeletingUserId(null)
     }
   }
 
   const handleReject = async (userId: string) => {
-    if (!confirm('このユーザーの認証を拒否しますか？')) {
+    if (!confirm(t("admin.confirmReject"))) {
       return
     }
 
@@ -167,13 +169,13 @@ export default function AdminPage() {
       console.log('Reject response:', { status: res.status, data })
 
       if (!res.ok) {
-        throw new Error(data.details || data.error || '認証拒否に失敗しました')
+        throw new Error(data.details || data.error || t("admin.rejectFailed"))
       }
 
       await fetchUsers()
     } catch (err) {
       console.error('Reject error:', err)
-      setError(err instanceof Error ? err.message : '認証拒否に失敗しました')
+      setError(err instanceof Error ? err.message : t("admin.rejectFailed"))
     } finally {
       setRejectingUserId(null)
     }
@@ -187,7 +189,7 @@ export default function AdminPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
-          <div className="text-sm text-muted-foreground">読み込み中...</div>
+          <div className="text-sm text-muted-foreground">{t("loading.data")}</div>
         </div>
       </div>
     )
@@ -206,12 +208,12 @@ export default function AdminPage() {
         {/* ヘッダー */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">管理者ダッシュボード</h1>
-            <p className="text-muted-foreground">ユーザーの管理</p>
+            <h1 className="text-3xl font-bold mb-2">{t("admin.title")}</h1>
+            <p className="text-muted-foreground">{t("admin.subtitle")}</p>
           </div>
           <Button variant="outline" onClick={() => router.push('/')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            ホームに戻る
+            {t("admin.backToHome")}
           </Button>
         </div>
 
@@ -227,10 +229,10 @@ export default function AdminPage() {
         <Tabs defaultValue="pending" className="space-y-4">
           <TabsList>
             <TabsTrigger value="pending">
-              承認待ちユーザー ({pendingUsers.length})
+              {t("admin.pendingUsers")} ({pendingUsers.length})
             </TabsTrigger>
             <TabsTrigger value="approved">
-              承認済みユーザー ({approvedUsers.length})
+              {t("admin.approvedUsers")} ({approvedUsers.length})
             </TabsTrigger>
           </TabsList>
 
@@ -239,7 +241,7 @@ export default function AdminPage() {
             {pendingUsers.length === 0 ? (
               <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
-                  承認待ちのユーザーはいません
+                  {t("admin.noPendingUsers")}
                 </CardContent>
               </Card>
             ) : (
@@ -255,7 +257,7 @@ export default function AdminPage() {
                       </div>
                       <Badge variant="outline" className="text-yellow-600 border-yellow-600">
                         <Clock className="w-3 h-3 mr-1" />
-                        承認待ち
+                        {t("admin.statusPending")}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -270,12 +272,12 @@ export default function AdminPage() {
                           {approvingUserId === getUserId(user) ? (
                             <>
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              承認中...
+                              {t("admin.approving")}
                             </>
                           ) : (
                             <>
                               <CheckCircle className="w-4 h-4 mr-2" />
-                              ユーザーとして承認
+                              {t("admin.approveAsUser")}
                             </>
                           )}
                         </Button>
@@ -287,12 +289,12 @@ export default function AdminPage() {
                           {approvingUserId === getUserId(user) ? (
                             <>
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              承認中...
+                              {t("admin.approving")}
                             </>
                           ) : (
                             <>
                               <CheckCircle className="w-4 h-4 mr-2" />
-                              管理者として承認
+                              {t("admin.approveAsAdmin")}
                             </>
                           )}
                         </Button>
@@ -304,18 +306,18 @@ export default function AdminPage() {
                           {rejectingUserId === getUserId(user) ? (
                             <>
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              拒否中...
+                              {t("admin.rejecting")}
                             </>
                           ) : (
                             <>
                               <XCircle className="w-4 h-4 mr-2" />
-                              認証拒否
+                              {t("admin.reject")}
                             </>
                           )}
                         </Button>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        登録日時: {new Date(user.created_at).toLocaleString('ja-JP')}
+                        {t("admin.registeredAt")}: {new Date(user.created_at).toLocaleString(language === 'ja' ? 'ja-JP' : 'en-US')}
                       </div>
                     </div>
                   </CardContent>
@@ -329,7 +331,7 @@ export default function AdminPage() {
             {approvedUsers.length === 0 ? (
               <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
-                  承認済みのユーザーはいません
+                  {t("admin.noApprovedUsers")}
                 </CardContent>
               </Card>
             ) : (
@@ -347,11 +349,11 @@ export default function AdminPage() {
                         <Badge
                           variant={user.role === 'admin' ? 'default' : 'secondary'}
                         >
-                          {user.role === 'admin' ? '管理者' : 'ユーザー'}
+                          {user.role === 'admin' ? t("admin.roleAdmin") : t("admin.roleUser")}
                         </Badge>
                         <Badge variant="outline" className="text-green-600 border-green-600">
                           <CheckCircle className="w-3 h-3 mr-1" />
-                          承認済み
+                          {t("admin.statusApproved")}
                         </Badge>
                       </div>
                     </div>
@@ -359,7 +361,7 @@ export default function AdminPage() {
                   <CardContent>
                     <div className="space-y-3">
                       <div className="text-sm text-muted-foreground">
-                        登録日時: {new Date(user.created_at).toLocaleString('ja-JP')}
+                        {t("admin.registeredAt")}: {new Date(user.created_at).toLocaleString(language === 'ja' ? 'ja-JP' : 'en-US')}
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <Button
@@ -371,11 +373,11 @@ export default function AdminPage() {
                           {revokingUserId === getUserId(user) ? (
                             <>
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              取り消し中...
+                              {t("admin.revoking")}
                             </>
                           ) : (
                             <>
-                              承認を取り消す
+                              {t("admin.revokeApproval")}
                             </>
                           )}
                         </Button>
@@ -388,12 +390,12 @@ export default function AdminPage() {
                           {deletingUserId === getUserId(user) ? (
                             <>
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              削除中...
+                              {t("admin.deleting")}
                             </>
                           ) : (
                             <>
                               <Trash2 className="w-4 h-4 mr-2" />
-                              ユーザーを削除
+                              {t("admin.deleteUser")}
                             </>
                           )}
                         </Button>

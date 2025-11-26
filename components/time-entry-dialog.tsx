@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import type { Task, TimeEntry } from "@/lib/types"
 import { useState, useEffect } from "react"
 import { Trash2 } from "lucide-react"
+import { useLanguage } from "@/lib/contexts/LanguageContext"
 
 interface TimeEntryDialogProps {
   open: boolean
@@ -19,6 +20,7 @@ interface TimeEntryDialogProps {
 }
 
 export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, onDelete, onAdd }: TimeEntryDialogProps) {
+  const { t, language } = useLanguage()
   const [comment, setComment] = useState("")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
@@ -69,16 +71,16 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
 
       // 終了日時が現在時刻より未来の場合はエラー（1分の余裕あり）
       if (endDateTime > nowWithBuffer) {
-        setTimeError("終了日時は現在時刻より未来に設定できません")
+        setTimeError(t("timeEntry.endTimeError"))
       } else if (startDateTime > nowWithBuffer) {
-        setTimeError("開始日時は現在時刻より未来に設定できません")
+        setTimeError(t("timeEntry.startTimeError"))
       } else if (startDateTime >= endDateTime) {
-        setTimeError("終了日時は開始日時より後に設定してください")
+        setTimeError(t("timeEntry.timeOrderError"))
       } else {
         setTimeError("")
       }
     }
-  }, [startDate, endDate, startTime, endTime])
+  }, [startDate, endDate, startTime, endTime, t])
 
   const handleSave = () => {
     if (!entry) return
@@ -143,19 +145,22 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
     const diffMs = end.getTime() - start.getTime()
     const hours = Math.floor(diffMs / (1000 * 60 * 60))
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
-    return `${hours}時間${minutes}分`
+    if (language === "en") {
+      return `${hours} ${t("timeEntry.hours")} ${minutes} ${t("timeEntry.minutes")}`
+    }
+    return `${hours}${t("timeEntry.hours")}${minutes}${t("timeEntry.minutes")}`
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>時間記録の編集</DialogTitle>
+          <DialogTitle>{t("timeEntry.editTitle")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">タスク</label>
+            <label className="block text-sm font-medium mb-2">{t("timeEntry.task")}</label>
             <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
               <div className="w-4 h-4 rounded-full" style={{ backgroundColor: task.color }} />
               <span className="font-medium">{task.name}</span>
@@ -164,22 +169,22 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">開始日</label>
+              <label className="block text-sm font-medium mb-2">{t("timeEntry.startDate")}</label>
               <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} autoFocus={false} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">終了日</label>
+              <label className="block text-sm font-medium mb-2">{t("timeEntry.endDate")}</label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} autoFocus={false} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">開始時刻</label>
+              <label className="block text-sm font-medium mb-2">{t("timeEntry.startTime")}</label>
               <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} autoFocus={false} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">終了時刻</label>
+              <label className="block text-sm font-medium mb-2">{t("timeEntry.endTime")}</label>
               <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} autoFocus={false} />
             </div>
           </div>
@@ -191,11 +196,11 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-2">合計時間: {calculateDuration()}</label>
+            <label className="block text-sm font-medium mb-2">{t("timeEntry.totalTime")}: {calculateDuration()}</label>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">コメント</label>
+            <label className="block text-sm font-medium mb-2">{t("timeEntry.comment")}</label>
             <Textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -206,19 +211,19 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
               }}
               rows={4}
             />
-            <p className="text-xs text-muted-foreground mt-1">⌘/Ctrl + Enter で保存</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("timeEntry.saveShortcut")}</p>
           </div>
         </div>
 
         <DialogFooter className="gap-2">
           <Button variant="destructive" onClick={onDelete}>
             <Trash2 className="w-4 h-4 mr-2" />
-            削除
+            {t("timeEntry.delete")}
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            キャンセル
+            {t("timeEntry.cancel")}
           </Button>
-          <Button onClick={handleSave} disabled={!!timeError}>保存</Button>
+          <Button onClick={handleSave} disabled={!!timeError}>{t("timeEntry.save")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
