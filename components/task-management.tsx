@@ -47,8 +47,15 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
   const [showGlobalTaskDialog, setShowGlobalTaskDialog] = useState(false)
   const [newGlobalTaskName, setNewGlobalTaskName] = useState('')
   const [newGlobalTaskLabel, setNewGlobalTaskLabel] = useState('')
+  // 個人タスク作成用の状態
+  const [showTeamTaskDialog, setShowTeamTaskDialog] = useState(false)
+  const [newTeamTaskName, setNewTeamTaskName] = useState('')
+  const [newTeamTaskLabel, setNewTeamTaskLabel] = useState('')
+  const [selectedTeamId, setSelectedTeamId] = useState('')
+  const [creatingTeamTask, setCreatingTeamTask] = useState(false)
+  const [userTeams, setUserTeams] = useState<TeamInfo[]>([])
 
-  // Team情報を取得
+  // Team情報を取得（管理者用の全チーム）
   useEffect(() => {
     const fetchTeams = async () => {
       try {
@@ -62,6 +69,22 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       }
     }
     fetchTeams()
+  }, [])
+
+  // ユーザーの所属チームを取得（個人タスク作成用）
+  useEffect(() => {
+    const fetchUserTeams = async () => {
+      try {
+        const res = await fetch('/api/users/me/teams')
+        if (res.ok) {
+          const data = await res.json()
+          setUserTeams(data.teams || [])
+        }
+      } catch (err) {
+        console.error('Failed to fetch user teams:', err)
+      }
+    }
+    fetchUserTeams()
   }, [])
 
   // タスクをTeamごとにグループ化し、優先度とステータスでソート
@@ -374,6 +397,77 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
     }
   }
 
+  const handleCreateTeamTask = async () => {
+    if (!newTeamTaskName.trim()) {
+      setSyncMessage({
+        type: 'error',
+        text: t("taskMgmt.enterTaskName")
+      })
+      return
+    }
+
+    if (!newTeamTaskLabel.trim()) {
+      setSyncMessage({
+        type: 'error',
+        text: t("taskMgmt.enterLabel")
+      })
+      return
+    }
+
+    if (!selectedTeamId) {
+      setSyncMessage({
+        type: 'error',
+        text: t("taskMgmt.selectTeam")
+      })
+      return
+    }
+
+    setCreatingTeamTask(true)
+    setSyncMessage(null)
+
+    try {
+      const res = await fetch('/api/tasks/create-team', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          taskName: newTeamTaskName.trim(),
+          label: newTeamTaskLabel.trim(),
+          teamId: selectedTeamId
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.details || data.error || t("taskMgmt.createFailed"))
+      }
+
+      setSyncMessage({
+        type: 'success',
+        text: data.message
+      })
+
+      // ダイアログを閉じて入力をクリア
+      setShowTeamTaskDialog(false)
+      setNewTeamTaskName('')
+      setNewTeamTaskLabel('')
+      setSelectedTeamId('')
+
+      // タスクリストを再読み込み（ページリロードで更新）
+      window.location.reload()
+    } catch (err) {
+      console.error('Create team task error:', err)
+      setSyncMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : t("taskMgmt.createFailed")
+      })
+    } finally {
+      setCreatingTeamTask(false)
+    }
+  }
+
   return (
     <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-[calc(100vh-200px)] relative">
       {/* Linear同期中の表示 */}
@@ -422,15 +516,24 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                 {t("taskMgmt.taskListDesc")}
               </div>
             </div>
-            {isAdmin && (
+            <div className="flex gap-2">
               <Button
-                onClick={() => setShowGlobalTaskDialog(true)}
+                onClick={() => setShowTeamTaskDialog(true)}
                 variant="outline"
                 size="sm"
               >
-                {t("taskMgmt.createGlobalTask")}
+                {t("taskMgmt.createTeamTask")}
               </Button>
-            )}
+              {isAdmin && (
+                <Button
+                  onClick={() => setShowGlobalTaskDialog(true)}
+                  variant="outline"
+                  size="sm"
+                >
+                  {t("taskMgmt.createGlobalTask")}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -736,6 +839,115 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                 {t("common.cancel")}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showTeamTaskDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg p-6 w-96 space-y-4">
+            <h3 className="text-lg font-semibold">{t("taskMgmt.createTeamTaskTitle")}</h3>
+            <p className="text-sm text-muted-foreground">
+              {t("taskMgmt.createTeamTaskDesc")}
+            </p>
+
+            {userTeams.length === 0 ? (
+              <div className="space-y-4">
+                <div className="p-4 border border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20 rounded-md">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                    {t("taskMgmt.noTeamsAvailable")}
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setShowTeamTaskDialog(false)}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {t("common.close")}
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t("taskMgmt.selectTeamLabel")}</label>
+                    <select
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                      value={selectedTeamId}
+                      onChange={(e) => setSelectedTeamId(e.target.value)}
+                    >
+                      <option value="">{t("taskMgmt.selectTeamPlaceholder")}</option>
+                      {userTeams.map((team) => (
+                        <option key={team.id} value={team.id}>
+                          {team.name} ({team.key})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t("taskMgmt.taskName")}</label>
+                    <Input
+                      placeholder={t("taskMgmt.taskNamePlaceholder")}
+                      value={newTeamTaskName}
+                      onChange={(e) => setNewTeamTaskName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !creatingTeamTask) {
+                          handleCreateTeamTask()
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t("taskMgmt.labelName")}</label>
+                    <Input
+                      placeholder={t("taskMgmt.labelPlaceholder")}
+                      value={newTeamTaskLabel}
+                      onChange={(e) => setNewTeamTaskLabel(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !creatingTeamTask) {
+                          handleCreateTeamTask()
+                        }
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("taskMgmt.teamLabelDesc")}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleCreateTeamTask}
+                    className="flex-1"
+                    disabled={creatingTeamTask || !newTeamTaskName.trim() || !newTeamTaskLabel.trim() || !selectedTeamId}
+                  >
+                    {creatingTeamTask ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        {t("taskMgmt.creating")}
+                      </>
+                    ) : (
+                      t("taskMgmt.create")
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowTeamTaskDialog(false)
+                      setNewTeamTaskName('')
+                      setNewTeamTaskLabel('')
+                      setSelectedTeamId('')
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                    disabled={creatingTeamTask}
+                  >
+                    {t("common.cancel")}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
