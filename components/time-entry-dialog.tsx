@@ -4,10 +4,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Task, TimeEntry } from "@/lib/types"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Trash2 } from "lucide-react"
 import { useLanguage } from "@/lib/contexts/LanguageContext"
+import { useAuth } from "@/lib/contexts/AuthContext"
 
 interface TimeEntryDialogProps {
   open: boolean
@@ -21,6 +23,8 @@ interface TimeEntryDialogProps {
 
 export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, onDelete, onAdd }: TimeEntryDialogProps) {
   const { t, language } = useLanguage()
+  const { user } = useAuth()
+  const [selectedTaskId, setSelectedTaskId] = useState("")
   const [comment, setComment] = useState("")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
@@ -28,9 +32,68 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
   const [endTime, setEndTime] = useState("")
   const [timeError, setTimeError] = useState("")
 
+  // タスクをフィルタリング: completed/canceledを除外し、assignee_emailが一致するもの + グローバルタスクのみ表示
+  const availableTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      // linear_state_typeがcompleted, canceledの場合は除外
+      if (task.linear_state_type === 'completed' || task.linear_state_type === 'canceled') {
+        return false
+      }
+
+      // 1. グローバルタスク（全員が見える）
+      if (task.assignee_email === 'TaskForAll@task.com') {
+        return true
+      }
+
+      // 2. 自分にアサインされているタスク
+      if (user?.email && task.assignee_email === user.email) {
+        return true
+      }
+
+      return false
+    })
+  }, [tasks, user?.email])
+
+  // タスクをTeamごとにグループ化してソート
+  const sortedGroupedTasks = useMemo(() => {
+    const groupedAvailableTasks = availableTasks.reduce((groups, task) => {
+      let teamName: string
+      if (!task.linear_team_id && task.assignee_email === 'TaskForAll@task.com') {
+        // グローバルタスク: linear_identifierをラベルとして使用（なければ「その他」）
+        teamName = task.linear_identifier || t("taskMgmt.other")
+      } else if (task.linear_team_id) {
+        // 通常のLinearタスク: Team名を使用（linear_identifierから推測）
+        teamName = `Team: ${task.linear_identifier?.split('-')[0] || 'Unknown'}`
+      } else {
+        // その他
+        teamName = t("taskMgmt.other")
+      }
+
+      if (!groups[teamName]) {
+        groups[teamName] = []
+      }
+      groups[teamName].push(task)
+      return groups
+    }, {} as Record<string, typeof availableTasks>)
+
+    // グループをソート: Teamグループを上に、グローバルタスクグループを下に配置
+    return Object.entries(groupedAvailableTasks).sort(([teamA], [teamB]) => {
+      const isTeamA = teamA.startsWith('Team:')
+      const isTeamB = teamB.startsWith('Team:')
+
+      if (isTeamA && isTeamB) {
+        return teamA.localeCompare(teamB)
+      }
+      if (isTeamA) return -1
+      if (isTeamB) return 1
+      return teamA.localeCompare(teamB)
+    })
+  }, [availableTasks, t])
+
   useEffect(() => {
     // ダイアログが開かれたときに状態をリセット
     if (open && entry) {
+      setSelectedTaskId(entry.taskId)
       setComment(entry.comment)
       const start = new Date(entry.startTime)
       // ローカルタイムゾーンの日付を取得
@@ -97,6 +160,7 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
       const firstEnd = new Date(`${startDate}T23:59:59.999`)
 
       const firstUpdates: Partial<TimeEntry> = {
+        taskId: selectedTaskId,
         comment,
         startTime: firstStart.toISOString(),
         endTime: firstEnd.toISOString(),
@@ -110,7 +174,7 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
       const secondEnd = new Date(`${endDate}T${endTime}:00`)
 
       onAdd({
-        taskId: entry.taskId,
+        taskId: selectedTaskId,
         startTime: secondStart.toISOString(),
         endTime: secondEnd.toISOString(),
         comment,
@@ -124,6 +188,7 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
       const endDateTime = new Date(`${endDate}T${endTime}:00`)
 
       const updates: Partial<TimeEntry> = {
+        taskId: selectedTaskId,
         comment,
         startTime: startDateTime.toISOString(),
         endTime: endDateTime.toISOString(),
@@ -161,10 +226,41 @@ export function TimeEntryDialog({ open, onOpenChange, entry, tasks, onUpdate, on
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">{t("timeEntry.task")}</label>
-            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: task.color }} />
-              <span className="font-medium">{task.name}</span>
-            </div>
+            <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("timeEntry.selectTask")}>
+                  {selectedTaskId && (() => {
+                    const selectedTask = tasks.find(t => t.id === selectedTaskId)
+                    if (selectedTask) {
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedTask.color }} />
+                          <span>{selectedTask.name}</span>
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {sortedGroupedTasks.map(([teamName, teamTasks]) => (
+                  <div key={teamName}>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                      {teamName}
+                    </div>
+                    {teamTasks.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: t.color }} />
+                          <span>{t.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </div>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
