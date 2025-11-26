@@ -120,8 +120,16 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
   }, [timeEntries])
 
   const { todayTime, yesterdayTime, weekTime, monthTime, lastWeekTime, lastMonthTime } = useMemo(() => {
-    const today = new Date().toISOString().split("T")[0]
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0]
+    // ローカルタイムゾーンで日付文字列を取得する関数
+    const getLocalDateString = (date: Date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    const today = getLocalDateString(new Date())
+    const yesterday = getLocalDateString(new Date(Date.now() - 86400000))
     const currentMonth = new Date().getMonth()
     const currentYear = new Date().getFullYear()
 
@@ -159,7 +167,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       const entryDate = new Date(entry.startTime)
 
       // 今日
-      const entryDateStr = entryDate.toISOString().split("T")[0]
+      const entryDateStr = getLocalDateString(entryDate)
       if (entryDateStr === today) {
         todaySeconds += duration
       }
