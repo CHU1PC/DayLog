@@ -47,7 +47,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
   const [showGlobalTaskDialog, setShowGlobalTaskDialog] = useState(false)
   const [newGlobalTaskName, setNewGlobalTaskName] = useState('')
   const [newGlobalTaskLabel, setNewGlobalTaskLabel] = useState('')
-  // 個人タスク作成用の状態
+  // チームタスク作成用の状態
   const [showTeamTaskDialog, setShowTeamTaskDialog] = useState(false)
   const [newTeamTaskName, setNewTeamTaskName] = useState('')
   const [newTeamTaskLabel, setNewTeamTaskLabel] = useState('')
@@ -71,7 +71,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
     fetchTeams()
   }, [])
 
-  // ユーザーの所属チームを取得（個人タスク作成用）
+  // ユーザーの所属チームを取得（チームタスク作成用）
   useEffect(() => {
     const fetchUserTeams = async () => {
       try {
