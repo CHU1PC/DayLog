@@ -245,7 +245,7 @@ const translations: Record<Language, Record<string, string>> = {
     "taskMgmt.today": "今日",
     "taskMgmt.yesterday": "昨日",
     "taskMgmt.other": "その他",
-    "taskMgmt.createTeamTask": "個人タスク作成",
+    "taskMgmt.createTeamTask": "チームタスク作成",
     "taskMgmt.createTeamTaskTitle": "チームタスクを作成",
     "taskMgmt.createTeamTaskDesc": "選択したチームのメンバーが使用できるタスクを作成します",
     "taskMgmt.selectTeamLabel": "チーム選択",
