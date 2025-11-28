@@ -83,8 +83,9 @@ export function useSupabase() {
               logger.log('[useSupabase] ✅ Including user task:', task.name, 'assignee_email:', task.assignee_email)
               return true
             }
-            // 3. チームタスク（assignee_emailがnullで、自分の所属チームに紐づくタスク）
-            if (task.assignee_email === null && task.linear_team_id && userTeamIds.includes(task.linear_team_id)) {
+            // 3. チームタスク（assignee_emailがnullで、linear_issue_idもnull、自分の所属チームに紐づくタスク）
+            // linear_issue_idがある場合はLinear Issueなので、未アサインでも表示しない
+            if (task.assignee_email === null && task.linear_issue_id === null && task.linear_team_id && userTeamIds.includes(task.linear_team_id)) {
               logger.log('[useSupabase] ✅ Including team task:', task.name, 'linear_team_id:', task.linear_team_id)
               return true
             }
