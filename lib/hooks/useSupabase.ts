@@ -14,7 +14,7 @@ export function useSupabase() {
   const [useLocalStorage, setUseLocalStorage] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking')
 
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, loading: authLoading } = useAuth()
   const supabase = createClient()
 
   // Supabaseが利用可能かチェック
@@ -194,11 +194,14 @@ export function useSupabase() {
       setLoading(false)
     }
 
+    // 認証ロード中は何もしない（タブ切り替え時の一時的なnullを無視）
+    if (authLoading) return
+
     // userが存在する場合のみデータを読み込む
     if (user) {
       loadData()
     } else {
-      // userがない場合（ログアウト時）はstateとlocalStorageをクリア
+      // 本当にログアウトした場合のみクリア
       setTasks([])
       setTimeEntries([])
       setLoading(false)
@@ -210,7 +213,9 @@ export function useSupabase() {
         console.log('[useSupabase] Cleared tasks and timeEntries on user logout')
       }
     }
-  }, [user, isAdmin])
+    // user?.idを使うことで、userオブジェクトの参照が変わっても同じユーザーなら再取得しない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isAdmin, authLoading])
 
   // LocalStorageに保存
   useEffect(() => {
