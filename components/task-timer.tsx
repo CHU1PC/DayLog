@@ -78,7 +78,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       const updateRes = await fetch('/api/spreadsheet/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timeEntryId: entryId }),
+        body: JSON.stringify({ timeEntryId: entryId, timezone }),
         keepalive: true,
       })
 
