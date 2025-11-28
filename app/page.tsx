@@ -67,10 +67,14 @@ export default function HomePage() {
       if (savedEntry?.id && entry.endTime) {
         console.log('[handleAddEntry] Syncing to spreadsheet:', savedEntry.id)
         try {
+          // ユーザーのタイムゾーン設定を取得
+          const timezone = typeof window !== 'undefined'
+            ? localStorage.getItem('taskTimerTimezone') || 'Asia/Tokyo'
+            : 'Asia/Tokyo'
           const updateRes = await fetch('/api/spreadsheet/update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ timeEntryId: savedEntry.id }),
+            body: JSON.stringify({ timeEntryId: savedEntry.id, timezone }),
           })
 
           if (updateRes.ok) {
