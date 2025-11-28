@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
+import { isUserLinearTeamMember } from '@/lib/linear'
 
 export async function POST(request: Request) {
   try {
@@ -9,6 +10,12 @@ export async function POST(request: Request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Linear API Keyの確認
+    const linearApiKey = process.env.LINEAR_API_KEY
+    if (!linearApiKey) {
+      return NextResponse.json({ error: 'LINEAR_API_KEY not configured' }, { status: 500 })
     }
 
     // リクエストボディからタスク名、ラベル、チームIDを取得
@@ -49,16 +56,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
     }
 
-    // ユーザーがこのチームに所属しているか確認（アサインされているLinear Issueがあるか）
-    const { data: membershipCheck } = await supabase
-      .from('tasks')
-      .select('id')
-      .eq('assignee_email', userApproval.email)
-      .eq('linear_team_id', team.linear_team_id)
-      .not('linear_issue_id', 'is', null)
-      .limit(1)
+    // Linear APIを使ってユーザーがこのチームのメンバーかどうか確認
+    const isMember = await isUserLinearTeamMember(linearApiKey, team.linear_team_id, userApproval.email)
 
-    if (!membershipCheck || membershipCheck.length === 0) {
+    if (!isMember) {
       return NextResponse.json({ error: 'You are not a member of this team' }, { status: 403 })
     }
 

@@ -43,25 +43,20 @@ export function useSupabase() {
       logger.log('[fetchTasks] Current user ID:', user?.id)
       logger.log('[fetchTasks] Current user email:', user?.email)
 
-      // ユーザーの所属TeamのLinear Team IDを取得
-      const { data: memberships, error: membershipsError } = await supabase
-        .from('user_team_memberships')
-        .select(`
-          team:linear_teams(
-            linear_team_id
-          )
-        `)
-        .eq('user_id', user?.id)
-
-      logger.log('[fetchTasks] Memberships data:', JSON.stringify(memberships, null, 2))
-
-      if (membershipsError) {
-        logger.error('Failed to fetch team memberships:', membershipsError)
+      // ユーザーの所属TeamのLinear Team IDを取得（Linear APIを使用）
+      let userTeamIds: string[] = []
+      try {
+        const teamsResponse = await fetch('/api/users/me/teams')
+        if (teamsResponse.ok) {
+          const teamsData = await teamsResponse.json()
+          userTeamIds = (teamsData.teams || []).map((t: any) => t.linear_team_id)
+          logger.log('[fetchTasks] User team IDs from Linear API:', userTeamIds)
+        } else {
+          logger.error('Failed to fetch user teams from API:', teamsResponse.status)
+        }
+      } catch (err) {
+        logger.error('Failed to fetch team memberships:', err)
       }
-
-      const userTeamIds = (memberships || [])
-        .map((m: any) => m.team?.linear_team_id)
-        .filter((id: string | null) => id !== null)
 
       logger.log('User team IDs for task filtering:', userTeamIds)
 

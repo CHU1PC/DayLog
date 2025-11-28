@@ -10,7 +10,8 @@ export * from './types'
 export { getAllLinearIssues, getMyLinearIssues, getLinearIssue } from './issues'
 
 // Team関連の関数をエクスポート
-export { getAllLinearTeams } from './teams'
+export { getAllLinearTeams, getLinearTeamMembers, isUserLinearTeamMember, getUserLinearTeams } from './teams'
+export type { LinearTeamMember, UserLinearTeam } from './teams'
 
 // Project関連の関数をエクスポート
 export { getAllLinearProjects, getLinearProjectsByTeam } from './projects'
