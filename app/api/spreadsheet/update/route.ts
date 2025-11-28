@@ -24,21 +24,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 時間エントリーとタスク情報をJOINで一括取得
+    // 時間エントリーとタスク情報を取得
     console.log('[Spreadsheet Update API] Fetching time entry with relations:', timeEntryId)
     console.log('[Spreadsheet Update API] Current user:', user.id)
 
-    // JOINを使用して1回のクエリで全データを取得
+    // time_entryとtaskを取得（linear_team_idはFKではないので別クエリで取得）
     const [timeEntryResult, userApprovalResult] = await Promise.all([
       supabase
         .from('time_entries')
         .select(`
           *,
-          tasks:task_id (
-            *,
-            linear_teams:linear_team_id (name),
-            linear_projects:linear_project_id (name)
-          )
+          tasks:task_id (*)
         `)
         .eq('id', timeEntryId)
         .single(),
@@ -62,10 +58,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // JOINで取得したデータを展開
+    // タスクデータを取得
     const task = timeEntry.tasks
-    let teamName = task?.linear_teams?.name || null
-    let projectName = task?.linear_projects?.name || null
+
+    // linear_team_idとlinear_project_idがある場合は別途取得
+    let teamName: string | null = null
+    let projectName: string | null = null
+
+    if (task?.linear_team_id || task?.linear_project_id) {
+      const [teamResult, projectResult] = await Promise.all([
+        task?.linear_team_id
+          ? supabase.from('linear_teams').select('name').eq('id', task.linear_team_id).single()
+          : Promise.resolve({ data: null }),
+        task?.linear_project_id
+          ? supabase.from('linear_projects').select('name').eq('id', task.linear_project_id).single()
+          : Promise.resolve({ data: null })
+      ])
+      teamName = teamResult.data?.name || null
+      projectName = projectResult.data?.name || null
+    }
 
     console.log('[Spreadsheet Update API] Task data:', task)
     console.log('[Spreadsheet Update API] Team name:', teamName)
