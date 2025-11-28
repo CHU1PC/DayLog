@@ -465,10 +465,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
           comment: pendingComment,
         })
         console.log('[handleSaveEntry] Entry updated successfully')
-
-        // スプレッドシート同期リスト（後で並列実行）
-        const syncPromises: Promise<void>[] = []
-        syncPromises.push(syncSpreadsheetEntry(currentEntryId, 'handleSaveEntry current'))
+        // Note: スプレッドシート同期はuseSupabase.tsのupdateTimeEntry内でDB更新成功後に自動実行される
 
         // 2. 過去の連続したエントリを遡って更新
         // 現在のエントリ情報を取得（開始時刻を知るため）
@@ -505,22 +502,13 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
           }
 
           // 連続エントリのDB更新を並列実行
+          // Note: 各updateTimeEntry内でDB更新成功後にスプレッドシート同期が自動実行される
           await Promise.all(
             contiguousUpdates.map(({ id }) =>
               onUpdateEntry(id, { comment: pendingComment })
             )
           )
-
-          // スプレッドシート同期を並列リストに追加
-          contiguousUpdates.forEach(({ id }) => {
-            syncPromises.push(syncSpreadsheetEntry(id, 'handleSaveEntry contiguous'))
-          })
         }
-
-        // 全スプレッドシート同期を並列実行（バックグラウンド、awaitしない）
-        Promise.all(syncPromises).catch(err => {
-          console.error('[handleSaveEntry] Spreadsheet sync error:', err)
-        })
 
       } catch (error) {
         console.error('[handleSaveEntry] Failed to update entry:', error)
