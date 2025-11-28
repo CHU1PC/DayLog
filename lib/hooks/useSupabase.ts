@@ -512,6 +512,14 @@ export function useSupabase() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ timeEntryId: id, timezone }),
             keepalive: true,
+          }).then(async (res) => {
+            if (res.ok) {
+              const result = await res.json()
+              console.log('[updateTimeEntry] Spreadsheet sync success:', result)
+            } else {
+              const errorText = await res.text()
+              console.error('[updateTimeEntry] Spreadsheet sync failed:', res.status, errorText)
+            }
           }).catch(err => {
             console.error('[updateTimeEntry] Spreadsheet sync error:', err)
           })
