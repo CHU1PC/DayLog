@@ -79,6 +79,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ timeEntryId: entryId }),
+        keepalive: true,
       })
 
       if (updateRes.ok) {
@@ -463,33 +464,33 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
           comment: pendingComment,
         })
         console.log('[handleSaveEntry] Entry updated successfully')
-        await syncSpreadsheetEntry(currentEntryId, 'handleSaveEntry current')
+
+        // スプレッドシート同期リスト（後で並列実行）
+        const syncPromises: Promise<void>[] = []
+        syncPromises.push(syncSpreadsheetEntry(currentEntryId, 'handleSaveEntry current'))
 
         // 2. 過去の連続したエントリを遡って更新
         // 現在のエントリ情報を取得（開始時刻を知るため）
         const currentEntry = timeEntries.find(e => e.id === currentEntryId)
         if (currentEntry) {
           let checkStartTime = new Date(currentEntry.startTime).getTime()
-          
+
           // 過去のエントリを探索
           // 時間順にソート（新しい順）
           const sortedEntries = [...timeEntries]
             .filter(e => e.id !== currentEntryId && e.taskId === selectedTaskId && e.endTime)
             .sort((a, b) => new Date(b.endTime!).getTime() - new Date(a.endTime!).getTime())
 
+          // 連続エントリのDB更新を収集
+          const contiguousUpdates: { id: string; startTime: number }[] = []
+
           for (const entry of sortedEntries) {
             const entryEndTime = new Date(entry.endTime!).getTime()
-            
+
             // 終了時刻と開始時刻の差が1秒以内なら連続とみなす
             if (Math.abs(checkStartTime - entryEndTime) <= 1000) {
               console.log('[handleSaveEntry] Found previous contiguous entry:', entry.id)
-              
-              // コメントを更新
-              await onUpdateEntry(entry.id, {
-                comment: pendingComment
-              })
-              await syncSpreadsheetEntry(entry.id, 'handleSaveEntry contiguous')
-              
+              contiguousUpdates.push({ id: entry.id, startTime: new Date(entry.startTime).getTime() })
               // 次の探索のために基準時間を更新
               checkStartTime = new Date(entry.startTime).getTime()
             } else {
@@ -501,7 +502,24 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
               break
             }
           }
+
+          // 連続エントリのDB更新を並列実行
+          await Promise.all(
+            contiguousUpdates.map(({ id }) =>
+              onUpdateEntry(id, { comment: pendingComment })
+            )
+          )
+
+          // スプレッドシート同期を並列リストに追加
+          contiguousUpdates.forEach(({ id }) => {
+            syncPromises.push(syncSpreadsheetEntry(id, 'handleSaveEntry contiguous'))
+          })
         }
+
+        // 全スプレッドシート同期を並列実行（バックグラウンド、awaitしない）
+        Promise.all(syncPromises).catch(err => {
+          console.error('[handleSaveEntry] Spreadsheet sync error:', err)
+        })
 
       } catch (error) {
         console.error('[handleSaveEntry] Failed to update entry:', error)

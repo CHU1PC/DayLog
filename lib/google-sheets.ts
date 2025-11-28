@@ -1,5 +1,8 @@
 import { google } from 'googleapis'
 
+// 同一timeEntryIdの重複書き込みを防ぐためのロック機構
+const pendingWrites = new Set<string>()
+
 // サービスアカウントの認証情報を使用してGoogle Sheets APIクライアントを作成
 export function getGoogleSheetsClient() {
   try {
@@ -127,6 +130,15 @@ export interface WriteTimeEntryResult {
 export async function writeTimeEntryToSheet(
   data: TimeEntryData
 ): Promise<WriteTimeEntryResult> {
+  // 同一IDの同時書き込みを防ぐためのロックチェック
+  if (pendingWrites.has(data.timeEntryId)) {
+    console.log(`[writeTimeEntryToSheet] Write already in progress for: ${data.timeEntryId}`)
+    return { success: true, action: 'already_exists' }
+  }
+
+  // ロックを取得
+  pendingWrites.add(data.timeEntryId)
+
   try {
     const sheets = getGoogleSheetsClient()
     const spreadsheetId = getSpreadsheetId()
@@ -186,6 +198,9 @@ export async function writeTimeEntryToSheet(
   } catch (error) {
     console.error('[writeTimeEntryToSheet] Error writing time entry to sheet:', error)
     throw error
+  } finally {
+    // 必ずロックを解放
+    pendingWrites.delete(data.timeEntryId)
   }
 }
 
@@ -279,14 +294,19 @@ export async function deleteTimeEntryFromSheet(
     const sheetName = getMonthlySheetName(entryDate)
     console.log('[deleteTimeEntryFromSheet] Sheet name:', sheetName)
 
-    // シート内の全データを取得してエントリーIDで検索
-    console.log('[deleteTimeEntryFromSheet] Fetching sheet data...')
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `${sheetName}!A:J`,
-    })
+    // シートデータとメタデータを並列取得
+    console.log('[deleteTimeEntryFromSheet] Fetching sheet data and metadata in parallel...')
+    const [valuesResponse, spreadsheetResponse] = await Promise.all([
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${sheetName}!A:J`,
+      }),
+      sheets.spreadsheets.get({
+        spreadsheetId,
+      })
+    ])
 
-    const rows = response.data.values
+    const rows = valuesResponse.data.values
     console.log('[deleteTimeEntryFromSheet] Rows found:', rows?.length || 0)
 
     if (!rows || rows.length <= 1) {
@@ -316,13 +336,8 @@ export async function deleteTimeEntryFromSheet(
       return
     }
 
-    // シートIDを取得
-    console.log('[deleteTimeEntryFromSheet] Getting sheet metadata...')
-    const spreadsheet = await sheets.spreadsheets.get({
-      spreadsheetId,
-    })
-
-    const sheet = spreadsheet.data.sheets?.find(
+    // シートIDを取得（既に並列で取得済み）
+    const sheet = spreadsheetResponse.data.sheets?.find(
       (s: any) => s.properties?.title === sheetName
     )
 
@@ -333,6 +348,52 @@ export async function deleteTimeEntryFromSheet(
 
     console.log('[deleteTimeEntryFromSheet] Sheet ID:', sheet.properties.sheetId)
     console.log('[deleteTimeEntryFromSheet] Deleting row:', rowIndex, '(1-indexed:', rowIndex + 1, ')')
+
+    // 削除直前に再確認（競合防止）
+    // 他のユーザーが先に行を削除した場合、インデックスがずれている可能性がある
+    const verifyResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!A${rowIndex + 1}`,
+    })
+    const currentCellValue = verifyResponse.data.values?.[0]?.[0]
+
+    if (currentCellValue !== timeEntryId) {
+      console.warn('[deleteTimeEntryFromSheet] Row index shifted, re-searching for entry:', timeEntryId)
+      // 行がずれている場合は再検索
+      const refreshResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${sheetName}!A:A`,
+      })
+      const refreshedRows = refreshResponse.data.values
+      const newRowIndex = refreshedRows?.findIndex((row, index) => index > 0 && row[0] === timeEntryId) ?? -1
+
+      if (newRowIndex === -1) {
+        console.log('[deleteTimeEntryFromSheet] Entry already deleted by another process')
+        return
+      }
+
+      console.log('[deleteTimeEntryFromSheet] Found entry at new index:', newRowIndex)
+
+      // 新しいインデックスで削除
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          requests: [{
+            deleteDimension: {
+              range: {
+                sheetId: sheet.properties.sheetId,
+                dimension: 'ROWS',
+                startIndex: newRowIndex,
+                endIndex: newRowIndex + 1,
+              },
+            },
+          }],
+        },
+      })
+
+      console.log(`[deleteTimeEntryFromSheet] ✓ Time entry deleted from sheet (after re-search): ${sheetName}, row: ${newRowIndex + 1}`)
+      return
+    }
 
     // 行を削除（batchUpdateを使用）
     const deleteRequest = {
