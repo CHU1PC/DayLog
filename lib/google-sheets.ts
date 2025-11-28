@@ -3,6 +3,9 @@ import { google } from 'googleapis'
 // 同一timeEntryIdの重複書き込みを防ぐためのロック機構
 const pendingWrites = new Set<string>()
 
+// 存在確認済みシート名のキャッシュ（毎回のメタデータ取得を回避）
+const existingSheetNames = new Set<string>()
+
 // サービスアカウントの認証情報を使用してGoogle Sheets APIクライアントを作成
 export function getGoogleSheetsClient() {
   try {
@@ -47,6 +50,11 @@ export async function ensureMonthlySheetExists(
   spreadsheetId: string,
   sheetName: string
 ): Promise<void> {
+  // キャッシュに存在する場合はAPI呼び出しをスキップ
+  if (existingSheetNames.has(sheetName)) {
+    return
+  }
+
   try {
     // スプレッドシートのメタデータを取得
     const spreadsheet = await sheets.spreadsheets.get({
@@ -58,50 +66,56 @@ export async function ensureMonthlySheetExists(
       (sheet: any) => sheet.properties?.title === sheetName
     )
 
-    if (!sheetExists) {
-      // シートが存在しない場合は作成
-      await sheets.spreadsheets.batchUpdate({
-        spreadsheetId,
-        requestBody: {
-          requests: [
-            {
-              addSheet: {
-                properties: {
-                  title: sheetName,
-                },
+    if (sheetExists) {
+      // 既存シートをキャッシュに追加
+      existingSheetNames.add(sheetName)
+      return
+    }
+
+    // シートが存在しない場合は作成
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            addSheet: {
+              properties: {
+                title: sheetName,
               },
             },
-          ],
-        },
-      })
-
-      // ヘッダー行を追加
-      const headerValues = [
-        [
-          'エントリーID',
-          '日付',
-          'Team名',
-          'Project名',
-          'Issue名',
-          'コメント',
-          '稼働時間(時間)',
-          'Assignee名',
-          '開始時刻',
-          '終了時刻',
+          },
         ],
-      ]
+      },
+    })
 
-      await sheets.spreadsheets.values.update({
-        spreadsheetId,
-        range: `${sheetName}!A1:J1`,
-        valueInputOption: 'RAW',
-        requestBody: {
-          values: headerValues,
-        },
-      })
+    // ヘッダー行を追加
+    const headerValues = [
+      [
+        'エントリーID',
+        '日付',
+        'Team名',
+        'Project名',
+        'Issue名',
+        'コメント',
+        '稼働時間(時間)',
+        'Assignee名',
+        '開始時刻',
+        '終了時刻',
+      ],
+    ]
 
-      console.log(`Created new sheet: ${sheetName}`)
-    }
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${sheetName}!A1:J1`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: headerValues,
+      },
+    })
+
+    // 新規作成したシートをキャッシュに追加
+    existingSheetNames.add(sheetName)
+    console.log(`Created new sheet: ${sheetName}`)
   } catch (error) {
     console.error('Error ensuring sheet exists:', error)
     throw error
