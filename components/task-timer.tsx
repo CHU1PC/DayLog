@@ -361,8 +361,9 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       endTime: previousDayEnd.toISOString(),
       comment: comment || pendingComment,
     })
-    // DB更新が成功した場合にスプレッドシートも確実に同期（updateが見つからなければwriteを試行）
-    await syncSpreadsheetEntry(currentEntryId, 'midnight crossover')
+    // DB更新が成功した場合にスプレッドシートも確実に同期（バックグラウンドで実行、keepaliveで継続保証）
+    syncSpreadsheetEntry(currentEntryId, 'midnight crossover')
+      .catch(err => console.error('[handleMidnightCrossover] Spreadsheet sync error:', err))
 
     // 新しい日の00:00:00で新しいタスクを開始
     const newDayStart = new Date(previousDayEnd)
