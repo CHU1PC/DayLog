@@ -68,6 +68,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
   const [timezone, setTimezone] = useState<TimezoneKey>('Asia/Tokyo')
   const [isSaving, setIsSaving] = useState(false)
   const [notificationInterval, setNotificationInterval] = useState<number>(3600000) // デフォルト: 1時間
+  const [userTeamIds, setUserTeamIds] = useState<string[]>([]) // ユーザーの所属Team IDs
   const [showNameRequiredDialog, setShowNameRequiredDialog] = useState(false)
 
   // スプレッドシートを同期する共通ヘルパー
@@ -142,6 +143,26 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
     }
   }, [])
 
+  // ユーザーの所属Team IDsを取得（Linear API経由）
+  useEffect(() => {
+    const fetchUserTeamIds = async () => {
+      try {
+        const response = await fetch('/api/users/me/teams')
+        if (response.ok) {
+          const data = await response.json()
+          const teamIds = (data.teams || []).map((t: { linear_team_id: string }) => t.linear_team_id)
+          setUserTeamIds(teamIds)
+          logger.log('[TaskTimer] User team IDs from Linear API:', teamIds)
+        }
+      } catch (err) {
+        logger.error('[TaskTimer] Failed to fetch user team IDs:', err)
+      }
+    }
+    if (user) {
+      fetchUserTeamIds()
+    }
+  }, [user])
+
   // タイムゾーン変更時にlocalStorageに保存
   const handleTimezoneChange = (newTimezone: TimezoneKey) => {
     setTimezone(newTimezone)
@@ -168,7 +189,13 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       return true
     }
 
-    // 3. それ以外は非表示
+    // 3. チームタスク（assignee_emailがnullで、linear_issue_idもnull、自分の所属チームに紐づくタスク）
+    if (task.assignee_email === null && task.linear_issue_id === null && task.linear_team_id && userTeamIds.includes(task.linear_team_id)) {
+      logger.log('[TaskTimer] ✅ Including team task:', task.name, 'for team:', task.linear_team_id)
+      return true
+    }
+
+    // 4. それ以外は非表示
     logger.log('[TaskTimer] ❌ Filtering out task:', {
       taskName: task.name,
       taskAssigneeEmail: task.assignee_email,
