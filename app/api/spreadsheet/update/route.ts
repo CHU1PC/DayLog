@@ -14,8 +14,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // リクエストボディから時間エントリーIDを取得
-    const { timeEntryId } = await request.json()
+    // リクエストボディから時間エントリーIDとタイムゾーンを取得
+    const { timeEntryId, timezone = 'Asia/Tokyo' } = await request.json()
 
     if (!timeEntryId) {
       return NextResponse.json(
@@ -122,18 +122,36 @@ export async function POST(request: NextRequest) {
     const endTime = new Date(timeEntry.end_time)
     const workingHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)
 
+    // タイムゾーンに基づいて日時をフォーマット
+    const formatOptions: Intl.DateTimeFormatOptions = {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }
+    const formatOptionsWithTime: Intl.DateTimeFormatOptions = {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }
+
     // スプレッドシートに書き込むデータを準備
     const sheetData: TimeEntryData = {
       timeEntryId: timeEntryId,
-      date: startTime.toLocaleDateString('ja-JP'),
+      date: startTime.toLocaleDateString('ja-JP', formatOptions),
       teamName: teamName,
       projectName: projectName,
       issueName: task?.linear_identifier || task?.name || null,
       comment: timeEntry.comment || '',
       workingHours,
       assigneeName: assigneeName,
-      startTime: startTime.toLocaleString('ja-JP'),
-      endTime: endTime.toLocaleString('ja-JP'),
+      startTime: startTime.toLocaleString('ja-JP', formatOptionsWithTime),
+      endTime: endTime.toLocaleString('ja-JP', formatOptionsWithTime),
     }
 
     console.log('[Spreadsheet Update API] Sheet data to update:', sheetData)

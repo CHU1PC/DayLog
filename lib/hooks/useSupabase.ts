@@ -536,12 +536,16 @@ export function useSupabase() {
       // update APIが内部でnot_foundの場合はwriteを呼び出すため、フォールバック不要
       try {
         console.log('[updateTimeEntry] Syncing spreadsheet for entry:', id)
+        // ユーザーのタイムゾーン設定を取得
+        const timezone = typeof window !== 'undefined'
+          ? localStorage.getItem('taskTimerTimezone') || 'Asia/Tokyo'
+          : 'Asia/Tokyo'
         const response = await fetch('/api/spreadsheet/update', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ timeEntryId: id }),
+          body: JSON.stringify({ timeEntryId: id, timezone }),
         })
 
         if (!response.ok) {
