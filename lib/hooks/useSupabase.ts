@@ -69,7 +69,7 @@ export function useSupabase() {
       if (error) throw error
 
       // 管理者: 全タスクを取得（未アサインタスクを表示するため）
-      // 一般ユーザー: 自分のemailとassignee_emailが一致するタスク + グローバルタスク(TaskForAll@task.com)のみ表示
+      // 一般ユーザー: 自分のemailとassignee_emailが一致するタスク + グローバルタスク + 所属チームのチームタスクのみ表示
       const filteredData = isAdmin
         ? (data || [])
         : (data || []).filter((task) => {
@@ -83,7 +83,12 @@ export function useSupabase() {
               logger.log('[useSupabase] ✅ Including user task:', task.name, 'assignee_email:', task.assignee_email)
               return true
             }
-            // 3. それ以外（nullや他人のタスク）は非表示
+            // 3. チームタスク（assignee_emailがnullで、自分の所属チームに紐づくタスク）
+            if (task.assignee_email === null && task.linear_team_id && userTeamIds.includes(task.linear_team_id)) {
+              logger.log('[useSupabase] ✅ Including team task:', task.name, 'linear_team_id:', task.linear_team_id)
+              return true
+            }
+            // 4. それ以外（他人のタスク）は非表示
             logger.log('[useSupabase] ❌ Excluding task:', task.name, 'assignee_email:', task.assignee_email, 'user email:', user?.email)
             return false
           })
