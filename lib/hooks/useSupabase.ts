@@ -468,103 +468,55 @@ export function useSupabase() {
     }
 
     // Supabase モード
-    try {
-      console.log('[updateTimeEntry] Using Supabase mode')
-      console.log('[updateTimeEntry] Entry ID to update:', id)
-
-      // 現在のユーザーIDを取得
-      const { data: { user: currentUser } } = await supabase.auth.getUser()
-      console.log('[updateTimeEntry] Current user ID:', currentUser?.id)
-
-      // 更新前にレコードが存在するか確認
-      const { data: existingEntry, error: fetchError } = await supabase
-        .from("time_entries")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle()
-
-      console.log('[updateTimeEntry] Existing entry:', existingEntry)
-      console.log('[updateTimeEntry] Fetch error:', fetchError)
-
-      if (fetchError) {
-        console.error('[updateTimeEntry] Failed to fetch existing entry:', fetchError)
-        throw new Error(`Entry not found or access denied: ${fetchError.message}`)
-      }
-
-      if (!existingEntry) {
-        // RLSポリシーで除外されている可能性があるため、詳細を調査
-        console.error('[updateTimeEntry] Entry not found. Checking RLS policy...')
-
-        // すべてのtime_entriesを取得して確認（デバッグ用）
-        const { data: allEntries } = await supabase
-          .from("time_entries")
-          .select("id, user_id, created_at")
-          .order('created_at', { ascending: false })
-          .limit(5)
-
-        console.log('[updateTimeEntry] Recent accessible entries:', allEntries)
-        console.error('[updateTimeEntry] Entry not found - ID:', id, '| User:', currentUser?.id)
-
-        throw new Error('Entry not found - possibly due to RLS policy or incorrect ID')
-      }
-
-      // 更新するフィールドのみを含むオブジェクトを作成
-      const updateData: Record<string, unknown> = {}
-      if (updates.taskId !== undefined) updateData.task_id = updates.taskId
-      if (updates.startTime !== undefined) updateData.start_time = updates.startTime
-      if (updates.endTime !== undefined) updateData.end_time = updates.endTime
-      if (updates.comment !== undefined) updateData.comment = updates.comment
-      if (updates.date !== undefined) updateData.date = updates.date
-
-      console.log('[updateTimeEntry] Update data:', updateData)
-
-      const { data, error } = await supabase
-        .from("time_entries")
-        .update(updateData)
-        .eq("id", id)
-        .select()
-
-      console.log('[updateTimeEntry] Supabase response - data:', data, 'error:', error)
-
-      if (error) throw error
-
-      // データが返ってこなくても、エラーがなければ更新成功とみなす
-      setTimeEntries((prev) => prev.map((entry) => (entry.id === id ? { ...entry, ...updates } : entry)))
-      console.log('[updateTimeEntry] Local state updated successfully')
-
-      // スプレッドシートにも更新を反映
-      // update APIが内部でnot_foundの場合はwriteを呼び出すため、フォールバック不要
-      try {
-        console.log('[updateTimeEntry] Syncing spreadsheet for entry:', id)
-        // ユーザーのタイムゾーン設定を取得
-        const timezone = typeof window !== 'undefined'
-          ? localStorage.getItem('taskTimerTimezone') || 'Asia/Tokyo'
-          : 'Asia/Tokyo'
-        const response = await fetch('/api/spreadsheet/update', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ timeEntryId: id, timezone }),
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          console.error('[updateTimeEntry] Spreadsheet sync failed with status:', response.status)
-          console.error('[updateTimeEntry] Error details:', errorData)
-          // スプレッドシート更新のエラーは致命的ではないので警告のみ
-        } else {
-          const result = await response.json()
-          console.log('[updateTimeEntry] Spreadsheet synced, action:', result.action)
-        }
-      } catch (spreadsheetError) {
-        console.error('[updateTimeEntry] Error syncing spreadsheet:', spreadsheetError)
-        // スプレッドシート更新のエラーは致命的ではないので処理を続行
-      }
-    } catch (err) {
-      console.error("[updateTimeEntry] Error updating time entry:", err)
-      throw err
+    // 元のエントリを保持（ロールバック用）
+    const originalEntry = timeEntries.find(e => e.id === id)
+    if (!originalEntry) {
+      console.error('[updateTimeEntry] Entry not found:', id)
+      throw new Error('Entry not found')
     }
+
+    // 楽観的UI更新: まずローカル状態を即座に更新
+    setTimeEntries((prev) => prev.map((entry) => (entry.id === id ? { ...entry, ...updates } : entry)))
+    console.log('[updateTimeEntry] Optimistically updated local state')
+
+    // 更新するフィールドのみを含むオブジェクトを作成
+    const updateData: Record<string, unknown> = {}
+    if (updates.taskId !== undefined) updateData.task_id = updates.taskId
+    if (updates.startTime !== undefined) updateData.start_time = updates.startTime
+    if (updates.endTime !== undefined) updateData.end_time = updates.endTime
+    if (updates.comment !== undefined) updateData.comment = updates.comment
+    if (updates.date !== undefined) updateData.date = updates.date
+
+    // DB更新（バックグラウンドで実行、エラー時のみロールバック）
+    supabase
+      .from("time_entries")
+      .update(updateData)
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) {
+          // エラー時はロールバック（元のエントリを復元）
+          console.error('[updateTimeEntry] DB update failed, rolling back:', error)
+          setTimeEntries((prev) => prev.map((entry) =>
+            entry.id === id ? originalEntry : entry
+          ))
+        } else {
+          console.log('[updateTimeEntry] DB update successful')
+
+          // スプレッドシート同期もバックグラウンドで実行
+          const timezone = typeof window !== 'undefined'
+            ? localStorage.getItem('taskTimerTimezone') || 'Asia/Tokyo'
+            : 'Asia/Tokyo'
+
+          fetch('/api/spreadsheet/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timeEntryId: id, timezone }),
+            keepalive: true,
+          }).catch(err => {
+            console.error('[updateTimeEntry] Spreadsheet sync error:', err)
+          })
+        }
+      })
   }
 
   // 時間エントリを削除
@@ -577,48 +529,48 @@ export function useSupabase() {
 
     // Supabase モード
     try {
-      // 削除前に時間エントリーの開始時刻を取得（スプレッドシート削除用）
-      const { data: entryToDelete, error: fetchError } = await supabase
-        .from("time_entries")
-        .select("start_time")
-        .eq("id", id)
-        .single()
+      // ローカルstateから開始時刻を取得（DBクエリ不要）
+      const entryToDelete = timeEntries.find(e => e.id === id)
+      const startTime = entryToDelete?.startTime
 
-      console.log('[deleteTimeEntry] Entry to delete:', entryToDelete)
-      console.log('[deleteTimeEntry] Fetch error:', fetchError)
+      console.log('[deleteTimeEntry] Entry to delete:', id, 'startTime:', startTime)
 
-      const { error } = await supabase.from("time_entries").delete().eq("id", id)
-
-      if (error) throw error
-
+      // 楽観的UI更新: まずローカル状態から削除
       setTimeEntries((prev) => prev.filter((entry) => entry.id !== id))
 
-      // スプレッドシートからも削除
-      if (entryToDelete?.start_time) {
-        try {
-          console.log('[deleteTimeEntry] Deleting from spreadsheet, entry:', id)
-          const response = await fetch('/api/spreadsheet/delete', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              timeEntryId: id,
-              startTime: entryToDelete.start_time,
-            }),
-          })
+      // DB削除（バックグラウンドで実行）
+      supabase.from("time_entries").delete().eq("id", id)
+        .then(({ error }) => {
+          if (error) {
+            console.error('[deleteTimeEntry] DB delete failed:', error)
+            // エラー時はエントリを復元
+            if (entryToDelete) {
+              setTimeEntries((prev) => [...prev, entryToDelete])
+            }
+          } else {
+            console.log('[deleteTimeEntry] DB deleted successfully')
+          }
+        })
 
+      // スプレッドシートからも削除（バックグラウンドで実行、awaitしない）
+      if (startTime) {
+        fetch('/api/spreadsheet/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            timeEntryId: id,
+            startTime: startTime,
+          }),
+          keepalive: true,
+        }).then(response => {
           if (!response.ok) {
-            const errorData = await response.json()
-            console.error('[deleteTimeEntry] Spreadsheet delete failed:', errorData)
-            // スプレッドシート削除のエラーは致命的ではないので警告のみ
+            console.error('[deleteTimeEntry] Spreadsheet delete failed:', response.status)
           } else {
             console.log('[deleteTimeEntry] Spreadsheet deleted successfully')
           }
-        } catch (spreadsheetError) {
-          console.error('[deleteTimeEntry] Error deleting from spreadsheet:', spreadsheetError)
-          // スプレッドシート削除のエラーは致命的ではないので処理を続行
-        }
+        }).catch(err => {
+          console.error('[deleteTimeEntry] Spreadsheet delete error:', err)
+        })
       }
     } catch (err) {
       console.error("Error deleting time entry:", err)

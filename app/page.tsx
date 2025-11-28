@@ -62,30 +62,24 @@ export default function HomePage() {
       const savedEntry = await addTimeEntry(entry)
       console.log('[handleAddEntry] Entry added, ID:', savedEntry?.id)
 
-      // 完了したエントリ（endTimeがある）の場合、スプレッドシートに同期
-      // update APIが内部でnot_foundの場合はwriteを呼び出すため、フォールバック不要
+      // 完了したエントリ（endTimeがある）の場合、スプレッドシートに同期（バックグラウンド）
       if (savedEntry?.id && entry.endTime) {
-        console.log('[handleAddEntry] Syncing to spreadsheet:', savedEntry.id)
-        try {
-          // ユーザーのタイムゾーン設定を取得
-          const timezone = typeof window !== 'undefined'
-            ? localStorage.getItem('taskTimerTimezone') || 'Asia/Tokyo'
-            : 'Asia/Tokyo'
-          const updateRes = await fetch('/api/spreadsheet/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ timeEntryId: savedEntry.id, timezone }),
-          })
+        const timezone = typeof window !== 'undefined'
+          ? localStorage.getItem('taskTimerTimezone') || 'Asia/Tokyo'
+          : 'Asia/Tokyo'
 
-          if (updateRes.ok) {
-            const result = await updateRes.json()
-            console.log('[handleAddEntry] Spreadsheet synced, action:', result.action)
-          } else {
-            console.error('[handleAddEntry] Spreadsheet sync failed:', updateRes.status)
-          }
-        } catch (spreadsheetError) {
-          console.error('[handleAddEntry] Error syncing to spreadsheet:', spreadsheetError)
-        }
+        // awaitせずバックグラウンドで実行（keepaliveでタブ切り替え時も継続）
+        fetch('/api/spreadsheet/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ timeEntryId: savedEntry.id, timezone }),
+          keepalive: true,
+        }).then(res => {
+          if (res.ok) console.log('[handleAddEntry] Spreadsheet synced')
+          else console.error('[handleAddEntry] Spreadsheet sync failed:', res.status)
+        }).catch(err => {
+          console.error('[handleAddEntry] Spreadsheet sync error:', err)
+        })
       }
     } catch (err) {
       console.error("Failed to add entry:", err)

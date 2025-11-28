@@ -24,15 +24,32 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 時間エントリーとタスク情報を取得
-    console.log('[Spreadsheet API] Fetching time entry:', timeEntryId)
+    // 時間エントリーとタスク情報をJOINで一括取得
+    console.log('[Spreadsheet API] Fetching time entry with relations:', timeEntryId)
     console.log('[Spreadsheet API] Current user:', user.id)
 
-    const { data: timeEntry, error: timeEntryError } = await supabase
-      .from('time_entries')
-      .select('*')
-      .eq('id', timeEntryId)
-      .single()
+    // JOINを使用して1回のクエリで全データを取得
+    const [timeEntryResult, userApprovalResult] = await Promise.all([
+      supabase
+        .from('time_entries')
+        .select(`
+          *,
+          tasks:task_id (
+            *,
+            linear_teams:linear_team_id (name),
+            linear_projects:linear_project_id (name)
+          )
+        `)
+        .eq('id', timeEntryId)
+        .single(),
+      supabase
+        .from('user_approvals')
+        .select('name')
+        .eq('user_id', user.id)
+        .single()
+    ])
+
+    const { data: timeEntry, error: timeEntryError } = timeEntryResult
 
     console.log('[Spreadsheet API] Time entry result:', timeEntry)
     console.log('[Spreadsheet API] Error:', timeEntryError)
@@ -45,43 +62,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // タスク情報を個別に取得
-    const { data: task, error: taskError } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('id', timeEntry.task_id)
-      .single()
+    // JOINで取得したデータを展開
+    const task = timeEntry.tasks
+    let teamName = task?.linear_teams?.name || null
+    let projectName = task?.linear_projects?.name || null
 
     console.log('[Spreadsheet API] Task data:', task)
-    console.log('[Spreadsheet API] Task error:', taskError)
-
-    // Team情報を個別に取得
-    let teamName = null
-    if (task?.linear_team_id) {
-      console.log('[Spreadsheet API] Fetching team:', task.linear_team_id)
-      const { data: team, error: teamError } = await supabase
-        .from('linear_teams')
-        .select('name')
-        .eq('linear_team_id', task.linear_team_id)
-        .single()
-      console.log('[Spreadsheet API] Team data:', team)
-      console.log('[Spreadsheet API] Team error:', teamError)
-      teamName = team?.name || null
-    }
-
-    // Project情報を個別に取得
-    let projectName = null
-    if (task?.linear_project_id) {
-      console.log('[Spreadsheet API] Fetching project:', task.linear_project_id)
-      const { data: project, error: projectError } = await supabase
-        .from('linear_projects')
-        .select('name')
-        .eq('linear_project_id', task.linear_project_id)
-        .single()
-      console.log('[Spreadsheet API] Project data:', project)
-      console.log('[Spreadsheet API] Project error:', projectError)
-      projectName = project?.name || null
-    }
+    console.log('[Spreadsheet API] Team name:', teamName)
+    console.log('[Spreadsheet API] Project name:', projectName)
 
     // グローバルタスク（管理者作成のその他タスク）の場合、Team名とProject名にタスク名を使用
     const isGlobalTask = task?.assignee_email === 'TaskForAll@task.com'
@@ -90,16 +78,8 @@ export async function POST(request: NextRequest) {
       projectName = task.name
     }
 
-    // ユーザー名をuser_approvalsから取得
-    let assigneeName = null
-    if (timeEntry.user_id) {
-      const { data: userApproval } = await supabase
-        .from('user_approvals')
-        .select('name')
-        .eq('user_id', timeEntry.user_id)
-        .single()
-      assigneeName = userApproval?.name || null
-    }
+    // ユーザー名を取得（並列クエリで既に取得済み）
+    const assigneeName = userApprovalResult.data?.name || null
 
     // 時間エントリーがログインユーザーのものか確認
     if (timeEntry.user_id !== user.id) {
