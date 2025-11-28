@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { getUserLinearTeams } from '@/lib/linear'
 
 /**
  * ログインユーザーの所属Team一覧を取得
- * Team管理と同様、一つでもそのチームにアサインされているIssueがあればチームに所属していると判断
+ * Linear APIを使ってユーザーが所属しているチームを取得（1回のAPI呼び出しで全チーム取得）
  * GET /api/users/me/teams
  */
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
+
+    // Linear API Keyの確認
+    const linearApiKey = process.env.LINEAR_API_KEY
+    if (!linearApiKey) {
+      return NextResponse.json({ error: 'LINEAR_API_KEY not configured' }, { status: 500 })
+    }
 
     // 認証チェック
     const {
@@ -34,41 +41,28 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // ユーザーにアサインされているタスクから、所属チームを取得
-    const { data: tasks, error: tasksError } = await supabase
-      .from('tasks')
-      .select('linear_team_id')
-      .eq('assignee_email', userApproval.email)
-      .not('linear_team_id', 'is', null)
-      .not('linear_issue_id', 'is', null)
+    // Linear APIからユーザーの所属チームを1回で取得
+    const linearTeams = await getUserLinearTeams(linearApiKey, userApproval.email)
 
-    if (tasksError) {
-      console.error('Failed to fetch user tasks:', tasksError)
-      return NextResponse.json(
-        { error: 'Team情報の取得に失敗しました' },
-        { status: 500 }
-      )
-    }
-
-    // ユニークなlinear_team_idを取得
-    const uniqueTeamIds = [...new Set(tasks?.map(t => t.linear_team_id).filter(Boolean))]
-
-    if (uniqueTeamIds.length === 0) {
+    if (linearTeams.length === 0) {
       return NextResponse.json({
         teams: [],
         count: 0,
       })
     }
 
-    // チーム情報を取得
-    const { data: teams, error: teamsError } = await supabase
+    // Linear Team IDのリストを取得
+    const linearTeamIds = linearTeams.map(t => t.id)
+
+    // DBから該当するチームの詳細情報を取得
+    const { data: dbTeams, error: teamsError } = await supabase
       .from('linear_teams')
       .select('id, linear_team_id, name, key, description, icon, color, url')
-      .in('linear_team_id', uniqueTeamIds)
+      .in('linear_team_id', linearTeamIds)
       .order('name')
 
     if (teamsError) {
-      console.error('Failed to fetch teams:', teamsError)
+      console.error('Failed to fetch teams from DB:', teamsError)
       return NextResponse.json(
         { error: 'Team情報の取得に失敗しました' },
         { status: 500 }
@@ -76,8 +70,8 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      teams: teams || [],
-      count: teams?.length || 0,
+      teams: dbTeams || [],
+      count: dbTeams?.length || 0,
     })
   } catch (error) {
     console.error('User teams fetch error:', error)

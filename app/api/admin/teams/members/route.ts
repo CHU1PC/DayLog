@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { getLinearTeamMembers } from '@/lib/linear'
 
 /**
  * 全Teamとそのメンバー情報を取得（管理者のみ）
@@ -33,6 +34,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Linear API Keyの確認
+    const linearApiKey = process.env.LINEAR_API_KEY
+    if (!linearApiKey) {
+      return NextResponse.json({ error: 'LINEAR_API_KEY not configured' }, { status: 500 })
+    }
+
     // 全Teamを取得
     const { data: teams, error: teamsError } = await supabase
       .from('linear_teams')
@@ -46,30 +53,40 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // 各TeamのProject数を取得
+    // 各TeamのメンバーとProject数を取得（Linear APIを使用）
     const teamsWithCounts = await Promise.all(
       (teams || []).map(async (team) => {
-        // メンバー数を取得
-        const { data: memberships, error: membershipsError } = await supabase
-          .from('user_team_memberships')
-          .select(`
-            user_id,
-            user:user_approvals(
-              user_id,
-              email,
-              role,
-              approved
-            )
-          `)
-          .eq('team_id', team.id)
-
-        if (membershipsError) {
-          console.error('Failed to fetch memberships for team:', team.id, membershipsError)
+        // Linear APIからメンバーを取得
+        let linearMembers: Array<{ id: string; email: string; name: string; displayName?: string; active: boolean }> = []
+        try {
+          linearMembers = await getLinearTeamMembers(linearApiKey, team.linear_team_id)
+        } catch (err) {
+          console.error('Failed to fetch members from Linear for team:', team.id, err)
         }
 
-        const members = (memberships || [])
-          .map((m: any) => m.user)
-          .filter((u: any) => u !== null)
+        // DBのuser_approvalsとマッチングして追加情報を取得
+        const memberEmails = linearMembers.map(m => m.email).filter(Boolean)
+        let dbMembers: any[] = []
+        if (memberEmails.length > 0) {
+          const { data: dbUsers } = await supabase
+            .from('user_approvals')
+            .select('user_id, email, role, approved')
+            .in('email', memberEmails)
+          dbMembers = dbUsers || []
+        }
+
+        // Linear APIのメンバー情報とDBの情報をマージ
+        const members = linearMembers.map(lm => {
+          const dbUser = dbMembers.find(u => u.email === lm.email)
+          return {
+            user_id: dbUser?.user_id || null,
+            email: lm.email,
+            name: lm.name || lm.displayName || lm.email,
+            role: dbUser?.role || null,
+            approved: dbUser?.approved || false,
+            active: lm.active,
+          }
+        })
 
         // プロジェクト数を取得
         const { count: projectCount } = await supabase
