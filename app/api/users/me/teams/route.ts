@@ -42,9 +42,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Linear APIからユーザーの所属チームを1回で取得
+    console.log('[/api/users/me/teams] Fetching teams for email:', userApproval.email)
     const linearTeams = await getUserLinearTeams(linearApiKey, userApproval.email)
+    console.log('[/api/users/me/teams] Linear API returned teams:', linearTeams)
 
     if (linearTeams.length === 0) {
+      console.log('[/api/users/me/teams] No teams found from Linear API')
       return NextResponse.json({
         teams: [],
         count: 0,
@@ -53,6 +56,7 @@ export async function GET(request: NextRequest) {
 
     // Linear Team IDのリストを取得
     const linearTeamIds = linearTeams.map(t => t.id)
+    console.log('[/api/users/me/teams] Linear team IDs:', linearTeamIds)
 
     // DBから該当するチームの詳細情報を取得
     const { data: dbTeams, error: teamsError } = await supabase
@@ -60,6 +64,8 @@ export async function GET(request: NextRequest) {
       .select('id, linear_team_id, name, key, description, icon, color, url')
       .in('linear_team_id', linearTeamIds)
       .order('name')
+
+    console.log('[/api/users/me/teams] DB teams found:', dbTeams)
 
     if (teamsError) {
       console.error('Failed to fetch teams from DB:', teamsError)
