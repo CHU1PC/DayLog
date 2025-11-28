@@ -44,6 +44,17 @@ export function getMonthlySheetName(date: Date): string {
   return `${year}年${month}月`
 }
 
+// 日付文字列からシート名を生成（"2024/11/28" or "2024-11-28" 形式）
+export function getMonthlySheetNameFromDateString(dateStr: string): string {
+  const match = dateStr.match(/(\d{4})[\/\-](\d{1,2})/)
+  if (match) {
+    return `${match[1]}年${parseInt(match[2])}月`
+  }
+  // フォールバック: 現在の月
+  const now = new Date()
+  return `${now.getFullYear()}年${now.getMonth() + 1}月`
+}
+
 // シートが存在するかチェックし、存在しない場合は作成
 export async function ensureMonthlySheetExists(
   sheets: any,
@@ -157,9 +168,8 @@ export async function writeTimeEntryToSheet(
     const sheets = getGoogleSheetsClient()
     const spreadsheetId = getSpreadsheetId()
 
-    // 日付からシート名を生成
-    const entryDate = new Date(data.date)
-    const sheetName = getMonthlySheetName(entryDate)
+    // 日付文字列からシート名を生成（環境依存のDateパースを回避）
+    const sheetName = getMonthlySheetNameFromDateString(data.date)
 
     // シートが存在することを確認（なければ作成）
     await ensureMonthlySheetExists(sheets, spreadsheetId, sheetName)
@@ -231,9 +241,8 @@ export async function updateTimeEntryInSheet(
     const sheets = getGoogleSheetsClient()
     const spreadsheetId = getSpreadsheetId()
 
-    // 日付からシート名を生成
-    const entryDate = new Date(data.date)
-    const sheetName = getMonthlySheetName(entryDate)
+    // 日付文字列からシート名を生成（環境依存のDateパースを回避）
+    const sheetName = getMonthlySheetNameFromDateString(data.date)
 
     // シートが存在することを確認
     await ensureMonthlySheetExists(sheets, spreadsheetId, sheetName)
