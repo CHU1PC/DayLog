@@ -68,10 +68,10 @@ export async function POST(request: NextRequest) {
     if (task?.linear_team_id || task?.linear_project_id) {
       const [teamResult, projectResult] = await Promise.all([
         task?.linear_team_id
-          ? supabase.from('linear_teams').select('name').eq('id', task.linear_team_id).single()
+          ? supabase.from('linear_teams').select('name').eq('linear_team_id', task.linear_team_id).single()
           : Promise.resolve({ data: null }),
         task?.linear_project_id
-          ? supabase.from('linear_projects').select('name').eq('id', task.linear_project_id).single()
+          ? supabase.from('linear_projects').select('name').eq('linear_project_id', task.linear_project_id).single()
           : Promise.resolve({ data: null })
       ])
       teamName = teamResult.data?.name || null
@@ -87,6 +87,13 @@ export async function POST(request: NextRequest) {
     if (isGlobalTask && task?.name) {
       teamName = task.name
       projectName = task.name
+    }
+
+    // チームタスク（linear_issue_idがnull、linear_team_idがある、assignee_emailがnull）の場合
+    // Project名にはlinear_identifier（ラベル）を使用
+    const isTeamTask = task?.linear_issue_id === null && task?.linear_team_id && task?.assignee_email === null
+    if (isTeamTask && !projectName) {
+      projectName = task?.linear_identifier || task?.name || null
     }
 
     // ユーザー名を取得（並列クエリで既に取得済み）
