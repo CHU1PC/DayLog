@@ -19,6 +19,7 @@ import {
   closeNotification,
 } from "@/lib/notifications"
 import { useLanguage } from "@/lib/contexts/LanguageContext"
+import { createClient } from "@/lib/supabase"
 
 // タイムゾーン定義
 const TIMEZONES = {
@@ -57,6 +58,7 @@ interface TaskTimerProps {
 export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHeaderMode = false }: TaskTimerProps) {
   const { user, userName } = useAuth()
   const { t } = useLanguage()
+  const supabase = createClient()
   const [selectedTaskId, setSelectedTaskId] = useState<string>("")
   const [isRunning, setIsRunning] = useState(false)
   const [startTime, setStartTime] = useState<string>("")
@@ -378,6 +380,44 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
 
   const handleMidnightCrossover = async () => {
     if (!isRunning || !selectedTaskId || !startTime || !currentEntryId) return
+
+    // ローカルチェック（高速な早期リターン - リフレッシュ後のケース）
+    const localEntry = timeEntries.find(entry => entry.id === currentEntryId)
+    if (localEntry?.endTime) {
+      console.log('[handleMidnightCrossover] Entry already stopped (local check), resetting timer')
+      setIsRunning(false)
+      setStartTime('')
+      setElapsedSeconds(0)
+      setCurrentEntryId('')
+      return
+    }
+
+    // DBから最新状態を確認（別デバイスでの停止を検知）
+    try {
+      const { data: latestEntry, error } = await supabase
+        .from('time_entries')
+        .select('end_time')
+        .eq('id', currentEntryId)
+        .single()
+
+      if (error) {
+        console.error('[handleMidnightCrossover] DB check failed:', error)
+        // エラー時は安全のため処理を中止
+        return
+      }
+
+      if (latestEntry?.end_time) {
+        console.log('[handleMidnightCrossover] Entry already stopped in DB, resetting timer')
+        setIsRunning(false)
+        setStartTime('')
+        setElapsedSeconds(0)
+        setCurrentEntryId('')
+        return
+      }
+    } catch (err) {
+      console.error('[handleMidnightCrossover] Unexpected error:', err)
+      return
+    }
 
     // 前日の23:59:59を計算
     const previousDayEnd = new Date(startTime)
