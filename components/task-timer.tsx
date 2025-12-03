@@ -526,6 +526,27 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
     // 現在進行中のエントリを更新
     if (currentEntryId) {
       try {
+        // DBから最新状態を確認（別デバイスで既に停止されていないか）
+        const { data: latestEntry, error: checkError } = await supabase
+          .from('time_entries')
+          .select('end_time')
+          .eq('id', currentEntryId)
+          .single()
+
+        if (checkError) {
+          console.error('[handleSaveEntry] DB check failed:', checkError)
+        } else if (latestEntry?.end_time) {
+          console.log('[handleSaveEntry] Entry already stopped in DB, skipping update')
+          // タイマー状態をリセットしてダイアログを閉じる
+          setIsRunning(false)
+          setStartTime('')
+          setElapsedSeconds(0)
+          setCurrentEntryId('')
+          setShowCommentDialog(false)
+          setIsSaving(false)
+          return
+        }
+
         // 1. 現在のエントリを更新
         await onUpdateEntry(currentEntryId, {
           endTime: now,
