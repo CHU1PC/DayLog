@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -72,6 +72,9 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
   const [notificationInterval, setNotificationInterval] = useState<number>(3600000) // デフォルト: 1時間
   const [userTeamIds, setUserTeamIds] = useState<string[]>([]) // ユーザーの所属Team IDs
   const [showNameRequiredDialog, setShowNameRequiredDialog] = useState(false)
+
+  // 日付跨ぎ処理の重複実行防止用Ref（useStateだと非同期のため効果がない）
+  const isMidnightCrossoverInProgressRef = useRef(false)
 
   // スプレッドシートを同期する共通ヘルパー
   // update APIが内部でnot_foundの場合はwriteを呼び出すため、フロントエンドでのフォールバックは不要
@@ -379,86 +382,100 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
   }, [])
 
   const handleMidnightCrossover = async () => {
-    if (!isRunning || !selectedTaskId || !startTime || !currentEntryId) return
-
-    // ローカルチェック（高速な早期リターン - リフレッシュ後のケース）
-    const localEntry = timeEntries.find(entry => entry.id === currentEntryId)
-    if (localEntry?.endTime) {
-      console.log('[handleMidnightCrossover] Entry already stopped (local check), resetting timer')
-      setIsRunning(false)
-      setStartTime('')
-      setElapsedSeconds(0)
-      setCurrentEntryId('')
+    // 処理中フラグをチェック（useRefなので即座に反映、重複実行を防ぐ）
+    if (isMidnightCrossoverInProgressRef.current) {
+      console.log('[handleMidnightCrossover] Already in progress, skipping')
       return
     }
 
-    // DBから最新状態を確認（別デバイスでの停止を検知）
+    if (!isRunning || !selectedTaskId || !startTime || !currentEntryId) return
+
+    // 処理開始（即座に反映）
+    isMidnightCrossoverInProgressRef.current = true
+
     try {
-      const { data: latestEntry, error } = await supabase
-        .from('time_entries')
-        .select('end_time')
-        .eq('id', currentEntryId)
-        .single()
-
-      if (error) {
-        console.error('[handleMidnightCrossover] DB check failed:', error)
-        // エラー時は安全のため処理を中止
-        return
-      }
-
-      if (latestEntry?.end_time) {
-        console.log('[handleMidnightCrossover] Entry already stopped in DB, resetting timer')
+      // ローカルチェック（高速な早期リターン - リフレッシュ後のケース）
+      const localEntry = timeEntries.find(entry => entry.id === currentEntryId)
+      if (localEntry?.endTime) {
+        console.log('[handleMidnightCrossover] Entry already stopped (local check), resetting timer')
         setIsRunning(false)
         setStartTime('')
         setElapsedSeconds(0)
         setCurrentEntryId('')
         return
       }
-    } catch (err) {
-      console.error('[handleMidnightCrossover] Unexpected error:', err)
-      return
-    }
 
-    // 前日の23:59:59を計算
-    const previousDayEnd = new Date(startTime)
-    previousDayEnd.setHours(23, 59, 59, 999)
+      // DBから最新状態を確認（別デバイスでの停止を検知）
+      try {
+        const { data: latestEntry, error } = await supabase
+          .from('time_entries')
+          .select('end_time')
+          .eq('id', currentEntryId)
+          .single()
 
-    // 現在進行中のエントリを前日の23:59:59で終了
-    await onUpdateEntry(currentEntryId, {
-      endTime: previousDayEnd.toISOString(),
-      comment: comment || pendingComment,
-    })
-    // DB更新が成功した場合にスプレッドシートも確実に同期（バックグラウンドで実行、keepaliveで継続保証）
-    syncSpreadsheetEntry(currentEntryId, 'midnight crossover')
-      .catch(err => console.error('[handleMidnightCrossover] Spreadsheet sync error:', err))
+        if (error) {
+          console.error('[handleMidnightCrossover] DB check failed:', error)
+          // エラー時は安全のため処理を中止
+          return
+        }
 
-    // 新しい日の00:00:00で新しいタスクを開始
-    const newDayStart = new Date(previousDayEnd)
-    newDayStart.setHours(0, 0, 0, 0)
-    newDayStart.setDate(newDayStart.getDate() + 1)
+        if (latestEntry?.end_time) {
+          console.log('[handleMidnightCrossover] Entry already stopped in DB, resetting timer')
+          setIsRunning(false)
+          setStartTime('')
+          setElapsedSeconds(0)
+          setCurrentEntryId('')
+          return
+        }
+      } catch (err) {
+        console.error('[handleMidnightCrossover] Unexpected error:', err)
+        return
+      }
 
-    const newEntry: TimeEntry = {
-      id: generateId(),
-      taskId: selectedTaskId,
-      startTime: newDayStart.toISOString(),
-      endTime: undefined,
-      comment: comment || pendingComment || "",
-      date: getDateInTimezone(newDayStart, timezone),
-    }
+      // 前日の23:59:59を計算
+      const previousDayEnd = new Date(startTime)
+      previousDayEnd.setHours(23, 59, 59, 999)
 
-    // 新しいエントリを追加して、実際のIDを取得
-    try {
-      const savedEntry = await onAddEntry(newEntry)
-      const actualEntryId = savedEntry?.id || newEntry.id
-      console.log(`[handleMidnightCrossover] New entry created with ID: ${actualEntryId}`)
+      // 現在進行中のエントリを前日の23:59:59で終了
+      await onUpdateEntry(currentEntryId, {
+        endTime: previousDayEnd.toISOString(),
+        comment: comment || pendingComment,
+      })
+      // DB更新が成功した場合にスプレッドシートも確実に同期（バックグラウンドで実行、keepaliveで継続保証）
+      syncSpreadsheetEntry(currentEntryId, 'midnight crossover')
+        .catch(err => console.error('[handleMidnightCrossover] Spreadsheet sync error:', err))
 
-      setCurrentEntryId(actualEntryId)
-      setStartTime(newDayStart.toISOString())
-      setElapsedSeconds(0)
+      // 新しい日の00:00:00で新しいタスクを開始
+      const newDayStart = new Date(previousDayEnd)
+      newDayStart.setHours(0, 0, 0, 0)
+      newDayStart.setDate(newDayStart.getDate() + 1)
 
-      console.log(`Midnight crossover: Split task at ${previousDayEnd.toISOString()} and restarted at ${newDayStart.toISOString()}`)
-    } catch (error) {
-      console.error('[handleMidnightCrossover] Failed to create new entry:', error)
+      const newEntry: TimeEntry = {
+        id: generateId(),
+        taskId: selectedTaskId,
+        startTime: newDayStart.toISOString(),
+        endTime: undefined,
+        comment: comment || pendingComment || "",
+        date: getDateInTimezone(newDayStart, timezone),
+      }
+
+      // 新しいエントリを追加して、実際のIDを取得
+      try {
+        const savedEntry = await onAddEntry(newEntry)
+        const actualEntryId = savedEntry?.id || newEntry.id
+        console.log(`[handleMidnightCrossover] New entry created with ID: ${actualEntryId}`)
+
+        setCurrentEntryId(actualEntryId)
+        setStartTime(newDayStart.toISOString())
+        setElapsedSeconds(0)
+
+        console.log(`Midnight crossover: Split task at ${previousDayEnd.toISOString()} and restarted at ${newDayStart.toISOString()}`)
+      } catch (error) {
+        console.error('[handleMidnightCrossover] Failed to create new entry:', error)
+      }
+    } finally {
+      // 処理完了（成功・失敗に関わらずフラグを解除）
+      isMidnightCrossoverInProgressRef.current = false
     }
   }
 
