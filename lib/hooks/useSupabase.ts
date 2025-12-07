@@ -393,6 +393,83 @@ export function useSupabase() {
         throw new Error('User must be authenticated to create time entries')
       }
 
+      // 重複チェック: 時間が重複するエントリを検索し、短い方を削除
+      const newStart = new Date(entry.startTime).getTime()
+      const newEnd = entry.endTime ? new Date(entry.endTime).getTime() : Date.now()
+      const newDuration = newEnd - newStart
+
+      // 同じユーザーの全エントリを取得して重複チェック
+      const { data: existingEntries, error: checkError } = await supabase
+        .from("time_entries")
+        .select("id, start_time, end_time, task_id")
+        .eq("user_id", user.id)
+
+      if (checkError) {
+        logger.error('[addTimeEntry] Overlap check failed:', checkError)
+        // チェックに失敗しても処理は続行
+      } else if (existingEntries && existingEntries.length > 0) {
+        const entriesToDelete: Array<{ id: string; start_time: string }> = []
+
+        for (const existing of existingEntries) {
+          const existingStart = new Date(existing.start_time).getTime()
+          const existingEnd = existing.end_time ? new Date(existing.end_time).getTime() : Date.now()
+
+          // 重複判定: (既存のstart < 新規のend) AND (既存のend > 新規のstart)
+          const isOverlapping = existingStart < newEnd && existingEnd > newStart
+
+          if (isOverlapping) {
+            const existingDuration = existingEnd - existingStart
+
+            logger.log('[addTimeEntry] Overlapping entry found:', {
+              existingId: existing.id,
+              existingDuration: Math.round(existingDuration / 1000),
+              newDuration: Math.round(newDuration / 1000),
+            })
+
+            if (existingDuration <= newDuration) {
+              // 既存が短い or 同じ → 削除対象（新しいエントリを優先）
+              logger.log('[addTimeEntry] Existing entry is shorter or equal, marking for deletion:', existing.id)
+              entriesToDelete.push({ id: existing.id, start_time: existing.start_time })
+            } else {
+              // 既存が長い → 新規作成をスキップ
+              logger.log('[addTimeEntry] Existing entry is longer, skipping new entry creation')
+              return {
+                id: existing.id,
+                taskId: existing.task_id,
+                startTime: existing.start_time,
+                endTime: existing.end_time,
+                comment: entry.comment || "",
+                date: entry.date,
+              }
+            }
+          }
+        }
+
+        // 短い重複エントリを削除（DB + スプレッドシート + ローカル状態）
+        for (const entryToDelete of entriesToDelete) {
+          logger.log('[addTimeEntry] Deleting shorter overlapping entry:', entryToDelete.id)
+
+          // DB削除
+          await supabase.from("time_entries").delete().eq("id", entryToDelete.id)
+
+          // スプレッドシートからも削除（非同期）
+          fetch('/api/spreadsheet/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              timeEntryId: entryToDelete.id,
+              startTime: entryToDelete.start_time,
+            }),
+            keepalive: true,
+          }).catch(err => {
+            logger.error('[addTimeEntry] Spreadsheet delete error:', err)
+          })
+
+          // ローカル状態からも削除
+          setTimeEntries((prev) => prev.filter(e => e.id !== entryToDelete.id))
+        }
+      }
+
       // 楽観的UI更新: 一時的なIDでUIに即座に反映
       const optimisticId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       const optimisticEntry: TimeEntry = {
