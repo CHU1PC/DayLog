@@ -69,6 +69,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
   const [currentEntryId, setCurrentEntryId] = useState<string>("")
   const [timezone, setTimezone] = useState<TimezoneKey>('Asia/Tokyo')
   const [isSaving, setIsSaving] = useState(false)
+  const [isStarting, setIsStarting] = useState(false) // 開始ボタン連打防止用
   const [notificationInterval, setNotificationInterval] = useState<number>(3600000) // デフォルト: 1時間
   const [userTeamIds, setUserTeamIds] = useState<string[]>([]) // ユーザーの所属Team IDs
   const [showNameRequiredDialog, setShowNameRequiredDialog] = useState(false)
@@ -480,6 +481,11 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
   }
 
   const handleStart = async () => {
+    // 連打防止: 既に開始処理中の場合は何もしない
+    if (isStarting) {
+      console.log('[handleStart] Already starting, ignoring duplicate click')
+      return
+    }
     if (!selectedTaskId) return
 
     // 名前が設定されていない場合はダイアログを表示
@@ -487,6 +493,8 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       setShowNameRequiredDialog(true)
       return
     }
+
+    setIsStarting(true)
 
     const nowDate = new Date()
     const now = nowDate.toISOString()
@@ -517,6 +525,8 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       showTimerStartNotification(taskName)
     } catch (error) {
       console.error('[TaskTimer] Failed to start timer:', error)
+    } finally {
+      setIsStarting(false)
     }
   }
 
@@ -709,7 +719,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
                 </div>
 
                 <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
-                  <Button onClick={handleStart} disabled={!selectedTaskId || isRunning} size="sm" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                  <Button onClick={handleStart} disabled={!selectedTaskId || isRunning || isStarting} size="sm" className="flex-1 sm:flex-none text-xs sm:text-sm">
                     <Play className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                     {t("timer.start")}
                   </Button>
@@ -814,7 +824,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
               </div>
 
               <div className="flex gap-2 ml-auto">
-                <Button onClick={handleStart} disabled={!selectedTaskId || isRunning} size="sm">
+                <Button onClick={handleStart} disabled={!selectedTaskId || isRunning || isStarting} size="sm">
                   <Play className="w-4 h-4 mr-1" />
                   {t("timer.start")}
                 </Button>
