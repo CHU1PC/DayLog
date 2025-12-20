@@ -438,13 +438,19 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
       previousDayEnd.setHours(23, 59, 59, 999)
 
       // 現在進行中のエントリを前日の23:59:59で終了
-      await onUpdateEntry(currentEntryId, {
-        endTime: previousDayEnd.toISOString(),
-        comment: comment || pendingComment,
-      })
-      // DB更新が成功した場合にスプレッドシートも確実に同期（バックグラウンドで実行、keepaliveで継続保証）
-      syncSpreadsheetEntry(currentEntryId, 'midnight crossover')
-        .catch(err => console.error('[handleMidnightCrossover] Spreadsheet sync error:', err))
+      // エラーが発生しても新規エントリ作成は試みる
+      try {
+        await onUpdateEntry(currentEntryId, {
+          endTime: previousDayEnd.toISOString(),
+          comment: comment || pendingComment,
+        })
+        // DB更新が成功した場合にスプレッドシートも確実に同期（バックグラウンドで実行、keepaliveで継続保証）
+        syncSpreadsheetEntry(currentEntryId, 'midnight crossover')
+          .catch(err => console.error('[handleMidnightCrossover] Spreadsheet sync error:', err))
+      } catch (updateError) {
+        console.error('[handleMidnightCrossover] Failed to update previous entry, continuing with new entry:', updateError)
+        // 前日エントリの更新に失敗しても、新規エントリ作成は試みる
+      }
 
       // 新しい日の00:00:00で新しいタスクを開始
       const newDayStart = new Date(previousDayEnd)
