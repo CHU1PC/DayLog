@@ -411,8 +411,16 @@ export function useSupabase() {
         const entriesToDelete: Array<{ id: string; start_time: string }> = []
 
         for (const existing of existingEntries) {
+          // 進行中のエントリ（end_time=null）は重複チェックから除外
+          // 理由: 日付跨ぎ時に前日エントリの更新がDBに反映される前に
+          //       新規エントリを作成すると、誤って重複と判定されるため
+          if (!existing.end_time) {
+            logger.log('[addTimeEntry] Skipping in-progress entry from overlap check:', existing.id)
+            continue
+          }
+
           const existingStart = new Date(existing.start_time).getTime()
-          const existingEnd = existing.end_time ? new Date(existing.end_time).getTime() : Date.now()
+          const existingEnd = new Date(existing.end_time).getTime()  // nullチェック済み
 
           // 重複判定: (既存のstart < 新規のend) AND (既存のend > 新規のstart)
           const isOverlapping = existingStart < newEnd && existingEnd > newStart
@@ -565,44 +573,44 @@ export function useSupabase() {
     if (updates.comment !== undefined) updateData.comment = updates.comment
     if (updates.date !== undefined) updateData.date = updates.date
 
-    // DB更新（バックグラウンドで実行、エラー時のみロールバック）
-    supabase
+    // DB更新を待つ（handleMidnightCrossoverで順序を保証するため）
+    const { error } = await supabase
       .from("time_entries")
       .update(updateData)
       .eq("id", id)
-      .then(({ error }) => {
-        if (error) {
-          // エラー時はロールバック（元のエントリを復元）
-          console.error('[updateTimeEntry] DB update failed, rolling back:', error)
-          setTimeEntries((prev) => prev.map((entry) =>
-            entry.id === id ? originalEntry : entry
-          ))
-        } else {
-          console.log('[updateTimeEntry] DB update successful')
 
-          // スプレッドシート同期もバックグラウンドで実行
-          const timezone = typeof window !== 'undefined'
-            ? localStorage.getItem('taskTimerTimezone') || 'Asia/Tokyo'
-            : 'Asia/Tokyo'
+    if (error) {
+      // エラー時はロールバック（元のエントリを復元）
+      console.error('[updateTimeEntry] DB update failed, rolling back:', error)
+      setTimeEntries((prev) => prev.map((entry) =>
+        entry.id === id ? originalEntry : entry
+      ))
+      throw error  // 呼び出し元にエラーを伝播
+    }
 
-          fetch('/api/spreadsheet/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ timeEntryId: id, timezone }),
-            keepalive: true,
-          }).then(async (res) => {
-            if (res.ok) {
-              const result = await res.json()
-              console.log('[updateTimeEntry] Spreadsheet sync success:', result)
-            } else {
-              const errorText = await res.text()
-              console.error('[updateTimeEntry] Spreadsheet sync failed:', res.status, errorText)
-            }
-          }).catch(err => {
-            console.error('[updateTimeEntry] Spreadsheet sync error:', err)
-          })
-        }
-      })
+    console.log('[updateTimeEntry] DB update successful')
+
+    // スプレッドシート同期はバックグラウンドで実行（待たなくてOK）
+    const timezone = typeof window !== 'undefined'
+      ? localStorage.getItem('taskTimerTimezone') || 'Asia/Tokyo'
+      : 'Asia/Tokyo'
+
+    fetch('/api/spreadsheet/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ timeEntryId: id, timezone }),
+      keepalive: true,
+    }).then(async (res) => {
+      if (res.ok) {
+        const result = await res.json()
+        console.log('[updateTimeEntry] Spreadsheet sync success:', result)
+      } else {
+        const errorText = await res.text()
+        console.error('[updateTimeEntry] Spreadsheet sync failed:', res.status, errorText)
+      }
+    }).catch(err => {
+      console.error('[updateTimeEntry] Spreadsheet sync error:', err)
+    })
   }
 
   // 時間エントリを削除
