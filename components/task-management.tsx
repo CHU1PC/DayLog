@@ -17,6 +17,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { useLanguage } from "@/lib/contexts/LanguageContext"
+import { TaskTimeChart } from "@/components/task-time-chart"
 
 interface TaskManagementProps {
   tasks: Task[]
@@ -733,6 +734,8 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
             </div>
           </div>
         </div>
+
+        <TaskTimeChart tasks={tasks} timeEntries={timeEntries} />
       </div>
 
       {editingTask && (
