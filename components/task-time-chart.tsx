@@ -12,7 +12,7 @@ interface TaskTimeChartProps {
   timeEntries: TimeEntry[]
 }
 
-type TimePeriod = 'today' | 'yesterday' | 'thisWeek' | 'thisMonth'
+type TimePeriod = 'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth'
 
 interface TaskTimeData {
   taskId: string
@@ -48,12 +48,22 @@ export function TaskTimeChart({ tasks, timeEntries }: TaskTimeChartProps) {
     weekStart.setDate(now.getDate() + diff)
     weekStart.setHours(0, 0, 0, 0)
 
-    return { today, yesterday, weekStart, currentMonth, currentYear, getLocalDateString }
+    // 先週の開始日と終了日
+    const lastWeekStart = new Date(weekStart)
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7)
+    const lastWeekEnd = new Date(weekStart)
+    lastWeekEnd.setMilliseconds(-1)
+
+    // 先月の開始日と終了日
+    const lastMonthStart = new Date(currentYear, currentMonth - 1, 1)
+    const lastMonthEnd = new Date(currentYear, currentMonth, 0, 23, 59, 59, 999)
+
+    return { today, yesterday, weekStart, lastWeekStart, lastWeekEnd, lastMonthStart, lastMonthEnd, currentMonth, currentYear, getLocalDateString }
   }, [])
 
   // タスク別の作業時間を集計
   const taskTimeData = useMemo(() => {
-    const { today, yesterday, weekStart, currentMonth, currentYear, getLocalDateString } = dateFilters
+    const { today, yesterday, weekStart, lastWeekStart, lastWeekEnd, lastMonthStart, lastMonthEnd, currentMonth, currentYear, getLocalDateString } = dateFilters
 
     // 期間に該当するエントリをフィルタリング
     const filteredEntries = timeEntries.filter((entry) => {
@@ -68,8 +78,12 @@ export function TaskTimeChart({ tasks, timeEntries }: TaskTimeChartProps) {
           return entryDateStr === yesterday
         case 'thisWeek':
           return entryDate >= weekStart
+        case 'lastWeek':
+          return entryDate >= lastWeekStart && entryDate <= lastWeekEnd
         case 'thisMonth':
           return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear
+        case 'lastMonth':
+          return entryDate >= lastMonthStart && entryDate <= lastMonthEnd
         default:
           return false
       }
@@ -160,7 +174,7 @@ export function TaskTimeChart({ tasks, timeEntries }: TaskTimeChartProps) {
         onValueChange={(v) => setSelectedPeriod(v as TimePeriod)}
         className="mb-4"
       >
-        <TabsList className="grid w-full grid-cols-4 h-8">
+        <TabsList className="grid w-full grid-cols-3 h-8 mb-1">
           <TabsTrigger value="today" className="text-xs px-1">
             {t('taskMgmt.today')}
           </TabsTrigger>
@@ -170,8 +184,16 @@ export function TaskTimeChart({ tasks, timeEntries }: TaskTimeChartProps) {
           <TabsTrigger value="thisWeek" className="text-xs px-1">
             {t('taskMgmt.thisWeek')}
           </TabsTrigger>
+        </TabsList>
+        <TabsList className="grid w-full grid-cols-3 h-8">
+          <TabsTrigger value="lastWeek" className="text-xs px-1">
+            {t('taskMgmt.lastWeek')}
+          </TabsTrigger>
           <TabsTrigger value="thisMonth" className="text-xs px-1">
             {t('taskMgmt.thisMonth')}
+          </TabsTrigger>
+          <TabsTrigger value="lastMonth" className="text-xs px-1">
+            {t('taskMgmt.lastMonth')}
           </TabsTrigger>
         </TabsList>
       </Tabs>
