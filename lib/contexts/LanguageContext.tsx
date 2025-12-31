@@ -245,6 +245,11 @@ const translations: Record<Language, Record<string, string>> = {
     "taskMgmt.today": "今日",
     "taskMgmt.yesterday": "昨日",
     "taskMgmt.other": "その他",
+
+    // Chart
+    "chart.taskDistribution": "タスク別作業時間",
+    "chart.noData": "この期間の記録がありません",
+    "chart.others": "その他",
     "taskMgmt.createTeamTask": "チームタスク作成",
     "taskMgmt.createTeamTaskTitle": "チームタスクを作成",
     "taskMgmt.createTeamTaskDesc": "選択したチームのメンバーが使用できるタスクを作成します",
@@ -582,6 +587,12 @@ const translations: Record<Language, Record<string, string>> = {
     "taskMgmt.today": "Today",
     "taskMgmt.yesterday": "Yesterday",
     "taskMgmt.other": "Other",
+
+    // Chart
+    "chart.taskDistribution": "Time by Task",
+    "chart.noData": "No records for this period",
+    "chart.others": "Others",
+
     "taskMgmt.createTeamTask": "Create Team Task",
     "taskMgmt.createTeamTaskTitle": "Create Team Task",
     "taskMgmt.createTeamTaskDesc": "Create a task that team members can use",
