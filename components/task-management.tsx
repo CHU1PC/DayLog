@@ -37,8 +37,15 @@ interface TeamInfo {
 }
 
 export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask, onDeleteTask }: TaskManagementProps) {
-  const { isAdmin } = useAuth()
+  const { isAdmin, user } = useAuth()
   const { t } = useLanguage()
+
+  // 個人タスクかどうかを判定する関数
+  const isPersonalTask = (task: Task) => {
+    return task.assignee_email === user?.email &&
+           !task.linear_issue_id &&
+           !task.linear_team_id
+  }
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
@@ -55,6 +62,11 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [creatingTeamTask, setCreatingTeamTask] = useState(false)
   const [userTeams, setUserTeams] = useState<TeamInfo[]>([])
+  // 個人タスク作成用の状態
+  const [showPersonalTaskDialog, setShowPersonalTaskDialog] = useState(false)
+  const [newPersonalTaskName, setNewPersonalTaskName] = useState('')
+  const [newPersonalTaskLabel, setNewPersonalTaskLabel] = useState('')
+  const [creatingPersonalTask, setCreatingPersonalTask] = useState(false)
 
   // Team情報を取得（管理者用の全チーム）
   useEffect(() => {
@@ -264,6 +276,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
         await onUpdateTask(editingTask.id, {
           name: editingTask.name,
           color: editingTask.color,
+          linear_state_type: editingTask.linear_state_type,
         })
         setEditingTask(null)
       } catch (err) {
@@ -469,6 +482,67 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
     }
   }
 
+  const handleCreatePersonalTask = async () => {
+    if (!newPersonalTaskName.trim()) {
+      setSyncMessage({
+        type: 'error',
+        text: t("taskMgmt.enterTaskName")
+      })
+      return
+    }
+
+    if (!newPersonalTaskLabel.trim()) {
+      setSyncMessage({
+        type: 'error',
+        text: t("taskMgmt.enterLabel")
+      })
+      return
+    }
+
+    setCreatingPersonalTask(true)
+    setSyncMessage(null)
+
+    try {
+      const res = await fetch('/api/tasks/create-personal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          taskName: newPersonalTaskName.trim(),
+          label: newPersonalTaskLabel.trim()
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.details || data.error || t("taskMgmt.createFailed"))
+      }
+
+      setSyncMessage({
+        type: 'success',
+        text: data.message
+      })
+
+      // ダイアログを閉じて入力をクリア
+      setShowPersonalTaskDialog(false)
+      setNewPersonalTaskName('')
+      setNewPersonalTaskLabel('')
+
+      // タスクリストを再読み込み
+      window.location.reload()
+    } catch (err) {
+      console.error('Create personal task error:', err)
+      setSyncMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : t("taskMgmt.createFailed")
+      })
+    } finally {
+      setCreatingPersonalTask(false)
+    }
+  }
+
   return (
     <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-[calc(100vh-200px)] relative">
       {/* Linear同期中の表示 */}
@@ -518,6 +592,13 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
               </div>
             </div>
             <div className="flex gap-2">
+              <Button
+                onClick={() => setShowPersonalTaskDialog(true)}
+                variant="outline"
+                size="sm"
+              >
+                {t("taskMgmt.createPersonalTask")}
+              </Button>
               <Button
                 onClick={() => setShowTeamTaskDialog(true)}
                 variant="outline"
@@ -650,7 +731,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                                     )}
                                   </div>
                                 )}
-                                {isAdmin && !task.linear_issue_id && (
+                                {(isAdmin || isPersonalTask(task)) && !task.linear_issue_id && (
                                   <div className="opacity-0 group-hover:opacity-100 flex gap-1 flex-shrink-0">
                                     <Button
                                       variant="ghost"
@@ -760,6 +841,21 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                 />
               ))}
             </div>
+
+            {/* 個人タスクの場合のみステータス選択を表示 */}
+            {isPersonalTask(editingTask) && (
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">{t("taskMgmt.taskStatus")}</label>
+                <select
+                  className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                  value={editingTask.linear_state_type || 'started'}
+                  onChange={(e) => setEditingTask({ ...editingTask, linear_state_type: e.target.value })}
+                >
+                  <option value="started">{t("taskMgmt.statusActive")}</option>
+                  <option value="completed">{t("taskMgmt.statusCompleted")}</option>
+                </select>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <Button onClick={handleUpdateTask} className="flex-1">
@@ -951,6 +1047,79 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {showPersonalTaskDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg p-6 w-96 space-y-4">
+            <h3 className="text-lg font-semibold">{t("taskMgmt.createPersonalTaskTitle")}</h3>
+            <p className="text-sm text-muted-foreground">
+              {t("taskMgmt.createPersonalTaskDesc")}
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">{t("taskMgmt.taskName")}</label>
+                <Input
+                  placeholder={t("taskMgmt.taskNamePlaceholder")}
+                  value={newPersonalTaskName}
+                  onChange={(e) => setNewPersonalTaskName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !creatingPersonalTask) {
+                      handleCreatePersonalTask()
+                    }
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">{t("taskMgmt.labelName")}</label>
+                <Input
+                  placeholder={t("taskMgmt.labelPlaceholder")}
+                  value={newPersonalTaskLabel}
+                  onChange={(e) => setNewPersonalTaskLabel(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !creatingPersonalTask) {
+                      handleCreatePersonalTask()
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("taskMgmt.personalLabelDesc")}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handleCreatePersonalTask}
+                className="flex-1"
+                disabled={creatingPersonalTask || !newPersonalTaskName.trim() || !newPersonalTaskLabel.trim()}
+              >
+                {creatingPersonalTask ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    {t("taskMgmt.creating")}
+                  </>
+                ) : (
+                  t("taskMgmt.create")
+                )}
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowPersonalTaskDialog(false)
+                  setNewPersonalTaskName('')
+                  setNewPersonalTaskLabel('')
+                }}
+                variant="outline"
+                className="flex-1"
+                disabled={creatingPersonalTask}
+              >
+                {t("common.cancel")}
+              </Button>
+            </div>
           </div>
         </div>
       )}

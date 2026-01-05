@@ -334,12 +334,15 @@ export function useSupabase() {
 
     // Supabase モード
     try {
+      // 更新するフィールドのみを含むオブジェクトを作成
+      const updateData: Record<string, unknown> = {}
+      if (updates.name !== undefined) updateData.name = updates.name
+      if (updates.color !== undefined) updateData.color = updates.color
+      if (updates.linear_state_type !== undefined) updateData.linear_state_type = updates.linear_state_type
+
       const { error } = await supabase
         .from("tasks")
-        .update({
-          name: updates.name,
-          color: updates.color,
-        })
+        .update(updateData)
         .eq("id", id)
 
       if (error) throw error
