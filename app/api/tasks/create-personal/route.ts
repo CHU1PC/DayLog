@@ -11,9 +11,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // リクエストボディからタスク名とラベルを取得
+    // リクエストボディからタスク名、ラベル、チームIDを取得
     const body = await request.json()
-    const { taskName, label } = body
+    const { taskName, label, teamId } = body
 
     if (!taskName || typeof taskName !== 'string') {
       return NextResponse.json({ error: 'Task name is required' }, { status: 400 })
@@ -21,6 +21,20 @@ export async function POST(request: Request) {
 
     if (!label || typeof label !== 'string') {
       return NextResponse.json({ error: 'Label is required' }, { status: 400 })
+    }
+
+    // チームIDが指定された場合、linear_team_idを取得
+    let linearTeamId: string | null = null
+    if (teamId && typeof teamId === 'string') {
+      const { data: team } = await supabase
+        .from('linear_teams')
+        .select('linear_team_id')
+        .eq('id', teamId)
+        .single()
+
+      if (team?.linear_team_id) {
+        linearTeamId = team.linear_team_id
+      }
     }
 
     // ユーザー情報を取得
@@ -63,7 +77,7 @@ export async function POST(request: Request) {
         user_id: user.id,
         // 個人タスク用の設定
         linear_issue_id: null,
-        linear_team_id: null,
+        linear_team_id: linearTeamId, // チームが選択された場合はそのチームID
         linear_project_id: null,
         linear_state_type: null,
         assignee_email: userApproval.email, // 自分のメールを設定（自分だけに見える）
