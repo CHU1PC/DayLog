@@ -41,10 +41,11 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
   const { t } = useLanguage()
 
   // 個人タスクかどうかを判定する関数
+  // assignee_emailが自分のメールで、Linear Issueではないタスク
+  // （チームに所属していても個人タスクとして扱う）
   const isPersonalTask = (task: Task) => {
     return task.assignee_email === user?.email &&
-           !task.linear_issue_id &&
-           !task.linear_team_id
+           !task.linear_issue_id
   }
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [syncing, setSyncing] = useState(false)
@@ -66,6 +67,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
   const [showPersonalTaskDialog, setShowPersonalTaskDialog] = useState(false)
   const [newPersonalTaskName, setNewPersonalTaskName] = useState('')
   const [newPersonalTaskLabel, setNewPersonalTaskLabel] = useState('')
+  const [selectedPersonalTeamId, setSelectedPersonalTeamId] = useState('')
   const [creatingPersonalTask, setCreatingPersonalTask] = useState(false)
 
   // Team情報を取得（管理者用の全チーム）
@@ -277,6 +279,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
           name: editingTask.name,
           color: editingTask.color,
           linear_state_type: editingTask.linear_state_type,
+          linear_team_id: editingTask.linear_team_id,
         })
         setEditingTask(null)
       } catch (err) {
@@ -510,7 +513,8 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
         },
         body: JSON.stringify({
           taskName: newPersonalTaskName.trim(),
-          label: newPersonalTaskLabel.trim()
+          label: newPersonalTaskLabel.trim(),
+          teamId: selectedPersonalTeamId || null
         }),
       })
 
@@ -529,6 +533,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       setShowPersonalTaskDialog(false)
       setNewPersonalTaskName('')
       setNewPersonalTaskLabel('')
+      setSelectedPersonalTeamId('')
 
       // タスクリストを再読み込み
       window.location.reload()
@@ -857,6 +862,23 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
               </div>
             )}
 
+            {/* 個人タスクの場合のみチーム選択を表示 */}
+            {isPersonalTask(editingTask) && (
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">{t("taskMgmt.selectTeamOptional")}</label>
+                <select
+                  className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                  value={editingTask.linear_team_id || ''}
+                  onChange={(e) => setEditingTask({ ...editingTask, linear_team_id: e.target.value || undefined })}
+                >
+                  <option value="">{t("taskMgmt.noTeamSelected")}</option>
+                  {userTeams.map((team) => (
+                    <option key={team.id} value={team.linear_team_id}>{team.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button onClick={handleUpdateTask} className="flex-1">
                 {t("common.save")}
@@ -1090,6 +1112,22 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                   {t("taskMgmt.personalLabelDesc")}
                 </p>
               </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">{t("taskMgmt.selectTeamOptional")}</label>
+                <select
+                  className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                  value={selectedPersonalTeamId}
+                  onChange={(e) => setSelectedPersonalTeamId(e.target.value)}
+                >
+                  <option value="">{t("taskMgmt.noTeamSelected")}</option>
+                  {userTeams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name} ({team.key})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="flex gap-2">
@@ -1112,6 +1150,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                   setShowPersonalTaskDialog(false)
                   setNewPersonalTaskName('')
                   setNewPersonalTaskLabel('')
+                  setSelectedPersonalTeamId('')
                 }}
                 variant="outline"
                 className="flex-1"
