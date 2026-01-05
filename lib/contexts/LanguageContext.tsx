@@ -258,6 +258,13 @@ const translations: Record<Language, Record<string, string>> = {
     "taskMgmt.selectTeam": "チームを選択してください",
     "taskMgmt.teamLabelDesc": "タスク選択時にこのラベルでグループ化されます（⌘/Ctrl + Enter で作成）",
     "taskMgmt.noTeamsAvailable": "所属しているチームがありません。管理者にチームへの追加を依頼してください。",
+    "taskMgmt.createPersonalTask": "個人タスク作成",
+    "taskMgmt.createPersonalTaskTitle": "個人タスクを作成",
+    "taskMgmt.createPersonalTaskDesc": "自分だけが使用できるタスクを作成します",
+    "taskMgmt.personalLabelDesc": "タスク選択時にこのラベルでグループ化されます（⌘/Ctrl + Enter で作成）",
+    "taskMgmt.taskStatus": "ステータス",
+    "taskMgmt.statusActive": "アクティブ",
+    "taskMgmt.statusCompleted": "完了",
 
     // User team viewer
     "userTeam.userSelection": "ユーザー選択",
@@ -601,6 +608,13 @@ const translations: Record<Language, Record<string, string>> = {
     "taskMgmt.selectTeam": "Please select a team",
     "taskMgmt.teamLabelDesc": "Tasks will be grouped by this label (⌘/Ctrl + Enter to create)",
     "taskMgmt.noTeamsAvailable": "You are not a member of any team. Please ask an admin to add you to a team.",
+    "taskMgmt.createPersonalTask": "Create Personal Task",
+    "taskMgmt.createPersonalTaskTitle": "Create Personal Task",
+    "taskMgmt.createPersonalTaskDesc": "Create a task only you can use",
+    "taskMgmt.personalLabelDesc": "Tasks will be grouped by this label (⌘/Ctrl + Enter to create)",
+    "taskMgmt.taskStatus": "Status",
+    "taskMgmt.statusActive": "Active",
+    "taskMgmt.statusCompleted": "Completed",
 
     // User team viewer
     "userTeam.userSelection": "User Selection",
