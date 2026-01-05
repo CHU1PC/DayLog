@@ -339,6 +339,7 @@ export function useSupabase() {
       if (updates.name !== undefined) updateData.name = updates.name
       if (updates.color !== undefined) updateData.color = updates.color
       if (updates.linear_state_type !== undefined) updateData.linear_state_type = updates.linear_state_type
+      if (updates.linear_team_id !== undefined) updateData.linear_team_id = updates.linear_team_id
 
       const { error } = await supabase
         .from("tasks")
