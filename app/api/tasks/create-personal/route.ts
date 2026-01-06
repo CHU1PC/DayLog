@@ -11,16 +11,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // リクエストボディからタスク名、ラベル、チームIDを取得
+    // リクエストボディからタスク名、チームIDを取得
     const body = await request.json()
-    const { taskName, label, teamId } = body
+    const { taskName, teamId } = body
 
     if (!taskName || typeof taskName !== 'string') {
       return NextResponse.json({ error: 'Task name is required' }, { status: 400 })
-    }
-
-    if (!label || typeof label !== 'string') {
-      return NextResponse.json({ error: 'Label is required' }, { status: 400 })
     }
 
     // チームIDが指定された場合、linear_team_idを取得
@@ -82,7 +78,7 @@ export async function POST(request: Request) {
         linear_state_type: null,
         assignee_email: userApproval.email, // 自分のメールを設定（自分だけに見える）
         assignee_name: null,
-        linear_identifier: label, // ラベル名を保存（グループ分けに使用）
+        linear_identifier: null, // グループ分けはlinear_team_idで行う
         linear_url: null,
         priority: null,
         description: null,

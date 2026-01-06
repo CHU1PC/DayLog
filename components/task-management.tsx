@@ -59,14 +59,12 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
   // チームタスク作成用の状態
   const [showTeamTaskDialog, setShowTeamTaskDialog] = useState(false)
   const [newTeamTaskName, setNewTeamTaskName] = useState('')
-  const [newTeamTaskLabel, setNewTeamTaskLabel] = useState('')
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [creatingTeamTask, setCreatingTeamTask] = useState(false)
   const [userTeams, setUserTeams] = useState<TeamInfo[]>([])
   // 個人タスク作成用の状態
   const [showPersonalTaskDialog, setShowPersonalTaskDialog] = useState(false)
   const [newPersonalTaskName, setNewPersonalTaskName] = useState('')
-  const [newPersonalTaskLabel, setNewPersonalTaskLabel] = useState('')
   const [selectedPersonalTeamId, setSelectedPersonalTeamId] = useState('')
   const [creatingPersonalTask, setCreatingPersonalTask] = useState(false)
 
@@ -423,14 +421,6 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       return
     }
 
-    if (!newTeamTaskLabel.trim()) {
-      setSyncMessage({
-        type: 'error',
-        text: t("taskMgmt.enterLabel")
-      })
-      return
-    }
-
     if (!selectedTeamId) {
       setSyncMessage({
         type: 'error',
@@ -450,7 +440,6 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
         },
         body: JSON.stringify({
           taskName: newTeamTaskName.trim(),
-          label: newTeamTaskLabel.trim(),
           teamId: selectedTeamId
         }),
       })
@@ -469,7 +458,6 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       // ダイアログを閉じて入力をクリア
       setShowTeamTaskDialog(false)
       setNewTeamTaskName('')
-      setNewTeamTaskLabel('')
       setSelectedTeamId('')
 
       // タスクリストを再読み込み（ページリロードで更新）
@@ -494,14 +482,6 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       return
     }
 
-    if (!newPersonalTaskLabel.trim()) {
-      setSyncMessage({
-        type: 'error',
-        text: t("taskMgmt.enterLabel")
-      })
-      return
-    }
-
     setCreatingPersonalTask(true)
     setSyncMessage(null)
 
@@ -513,7 +493,6 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
         },
         body: JSON.stringify({
           taskName: newPersonalTaskName.trim(),
-          label: newPersonalTaskLabel.trim(),
           teamId: selectedPersonalTeamId || null
         }),
       })
@@ -532,7 +511,6 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
       // ダイアログを閉じて入力をクリア
       setShowPersonalTaskDialog(false)
       setNewPersonalTaskName('')
-      setNewPersonalTaskLabel('')
       setSelectedPersonalTeamId('')
 
       // タスクリストを再読み込み
@@ -1019,30 +997,13 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                       }}
                     />
                   </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t("taskMgmt.labelName")}</label>
-                    <Input
-                      placeholder={t("taskMgmt.labelPlaceholder")}
-                      value={newTeamTaskLabel}
-                      onChange={(e) => setNewTeamTaskLabel(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !creatingTeamTask) {
-                          handleCreateTeamTask()
-                        }
-                      }}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {t("taskMgmt.teamLabelDesc")}
-                    </p>
-                  </div>
                 </div>
 
                 <div className="flex gap-2">
                   <Button
                     onClick={handleCreateTeamTask}
                     className="flex-1"
-                    disabled={creatingTeamTask || !newTeamTaskName.trim() || !newTeamTaskLabel.trim() || !selectedTeamId}
+                    disabled={creatingTeamTask || !newTeamTaskName.trim() || !selectedTeamId}
                   >
                     {creatingTeamTask ? (
                       <>
@@ -1057,7 +1018,6 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                     onClick={() => {
                       setShowTeamTaskDialog(false)
                       setNewTeamTaskName('')
-                      setNewTeamTaskLabel('')
                       setSelectedTeamId('')
                     }}
                     variant="outline"
@@ -1097,23 +1057,6 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1.5 block">{t("taskMgmt.labelName")}</label>
-                <Input
-                  placeholder={t("taskMgmt.labelPlaceholder")}
-                  value={newPersonalTaskLabel}
-                  onChange={(e) => setNewPersonalTaskLabel(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !creatingPersonalTask) {
-                      handleCreatePersonalTask()
-                    }
-                  }}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("taskMgmt.personalLabelDesc")}
-                </p>
-              </div>
-
-              <div>
                 <label className="text-sm font-medium mb-1.5 block">{t("taskMgmt.selectTeamOptional")}</label>
                 <select
                   className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
@@ -1134,7 +1077,7 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
               <Button
                 onClick={handleCreatePersonalTask}
                 className="flex-1"
-                disabled={creatingPersonalTask || !newPersonalTaskName.trim() || !newPersonalTaskLabel.trim()}
+                disabled={creatingPersonalTask || !newPersonalTaskName.trim()}
               >
                 {creatingPersonalTask ? (
                   <>
@@ -1149,7 +1092,6 @@ export function TaskManagement({ tasks, timeEntries, onTasksChange, onUpdateTask
                 onClick={() => {
                   setShowPersonalTaskDialog(false)
                   setNewPersonalTaskName('')
-                  setNewPersonalTaskLabel('')
                   setSelectedPersonalTeamId('')
                 }}
                 variant="outline"
