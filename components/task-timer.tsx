@@ -72,6 +72,7 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
   const [isStarting, setIsStarting] = useState(false) // 開始ボタン連打防止用
   const [notificationInterval, setNotificationInterval] = useState<number>(3600000) // デフォルト: 1時間
   const [userTeamIds, setUserTeamIds] = useState<string[]>([]) // ユーザーの所属Team IDs
+  const [userTeams, setUserTeams] = useState<{ linear_team_id: string; name: string }[]>([]) // ユーザーの所属Team情報
   const [showNameRequiredDialog, setShowNameRequiredDialog] = useState(false)
 
   // 日付跨ぎ処理の重複実行防止用Ref（useStateだと非同期のため効果がない）
@@ -156,8 +157,10 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
         const response = await fetch('/api/users/me/teams')
         if (response.ok) {
           const data = await response.json()
-          const teamIds = (data.teams || []).map((t: { linear_team_id: string }) => t.linear_team_id)
+          const teams = (data.teams || []) as { linear_team_id: string; name: string }[]
+          const teamIds = teams.map(t => t.linear_team_id)
           setUserTeamIds(teamIds)
+          setUserTeams(teams)
           logger.log('[TaskTimer] User team IDs from Linear API:', teamIds)
         }
       } catch (err) {
@@ -214,18 +217,17 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
 
   // タスクをTeamごとにグループ化してソート
   const groupedAvailableTasks = availableTasks.reduce((groups, task) => {
-    // グローバルタスク（linear_team_idがnull）の場合は、linear_identifierをラベルとして使用
-    // それ以外はTeam名を使用
     let teamName: string
     if (!task.linear_team_id && task.assignee_email === 'TaskForAll@task.com') {
-      // グローバルタスク: linear_identifierをラベルとして使用（なければ「その他」）
-      teamName = task.linear_identifier || 'その他'
+      // グローバルタスク: 「全員向けタスク」グループ
+      teamName = t("taskMgmt.globalTasks")
     } else if (task.linear_team_id) {
-      // 通常のLinearタスク: Team名を使用
-      teamName = `Team: ${task.linear_identifier?.split('-')[0] || 'Unknown'}`
+      // チーム所属タスク: チーム名を取得して表示
+      const team = userTeams.find(t => t.linear_team_id === task.linear_team_id)
+      teamName = team?.name || task.linear_identifier?.split('-')[0] || 'Unknown'
     } else {
-      // その他
-      teamName = t("taskMgmt.other")
+      // チームなしの個人タスク
+      teamName = t("taskMgmt.noTeamSelected")
     }
 
     if (!groups[teamName]) {
@@ -235,21 +237,25 @@ export function TaskTimer({ tasks, onAddEntry, onUpdateEntry, timeEntries, isHea
     return groups
   }, {} as Record<string, typeof availableTasks>)
 
-  // グループをソート: Teamグループを上に、グローバルタスクグループ（Team:で始まらない）を下に配置
+  // グループをソート: チーム名グループを上に、グローバルタスク・チームなしを下に配置
+  const globalTasksLabel = t("taskMgmt.globalTasks")
+  const noTeamLabel = t("taskMgmt.noTeamSelected")
   const sortedGroupedTasks = Object.entries(groupedAvailableTasks).sort(([teamA], [teamB]) => {
-    const isTeamA = teamA.startsWith('Team:')
-    const isTeamB = teamB.startsWith('Team:')
+    // グローバルタスクとチームなしは最後に
+    const isSpecialA = teamA === globalTasksLabel || teamA === noTeamLabel
+    const isSpecialB = teamB === globalTasksLabel || teamB === noTeamLabel
 
-    // 両方ともTeamグループの場合、アルファベット順
-    if (isTeamA && isTeamB) {
-      return teamA.localeCompare(teamB)
+    if (isSpecialA && !isSpecialB) return 1
+    if (!isSpecialA && isSpecialB) return -1
+
+    // 両方とも特殊グループの場合、グローバルタスク → チームなし の順
+    if (isSpecialA && isSpecialB) {
+      if (teamA === globalTasksLabel) return -1
+      if (teamB === globalTasksLabel) return 1
+      return 0
     }
 
-    // 片方だけTeamグループの場合、Teamグループを上に
-    if (isTeamA) return -1
-    if (isTeamB) return 1
-
-    // 両方ともグローバルタスクグループの場合、アルファベット順
+    // 通常のチーム名はアルファベット順
     return teamA.localeCompare(teamB)
   })
 
