@@ -267,6 +267,7 @@ const translations: Record<Language, Record<string, string>> = {
     "taskMgmt.statusCompleted": "完了",
     "taskMgmt.selectTeamOptional": "チーム（任意）",
     "taskMgmt.noTeamSelected": "チームなし",
+    "taskMgmt.globalTasks": "全員向けタスク",
 
     // User team viewer
     "userTeam.userSelection": "ユーザー選択",
@@ -619,6 +620,7 @@ const translations: Record<Language, Record<string, string>> = {
     "taskMgmt.statusCompleted": "Completed",
     "taskMgmt.selectTeamOptional": "Team (Optional)",
     "taskMgmt.noTeamSelected": "No Team",
+    "taskMgmt.globalTasks": "Global Tasks",
 
     // User team viewer
     "userTeam.userSelection": "User Selection",

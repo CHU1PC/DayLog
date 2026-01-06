@@ -18,16 +18,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'LINEAR_API_KEY not configured' }, { status: 500 })
     }
 
-    // リクエストボディからタスク名、ラベル、チームIDを取得
+    // リクエストボディからタスク名、チームIDを取得
     const body = await request.json()
-    const { taskName, label, teamId } = body
+    const { taskName, teamId } = body
 
     if (!taskName || typeof taskName !== 'string') {
       return NextResponse.json({ error: 'Task name is required' }, { status: 400 })
-    }
-
-    if (!label || typeof label !== 'string') {
-      return NextResponse.json({ error: 'Label is required' }, { status: 400 })
     }
 
     if (!teamId || typeof teamId !== 'string') {
@@ -94,7 +90,7 @@ export async function POST(request: Request) {
         linear_state_type: null,
         assignee_email: null, // チームタスクはassignee_emailをnullに
         assignee_name: null,
-        linear_identifier: label, // ラベル名を保存（グループ分けに使用）
+        linear_identifier: null, // グループ分けはlinear_team_idで行う
         linear_url: null,
         priority: null,
         description: `このタスクは${team.name}チームのメンバーが使用できる共通タスクです`,
